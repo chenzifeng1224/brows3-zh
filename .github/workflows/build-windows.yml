@@ -34,14 +34,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # tauri build 会通过 beforeBuildCommand 自动执行 pnpm build
-      - name: Build Tauri bundles (nsis + msi)
-        run: pnpm tauri build --bundles nsis,msi
+      # webviewInstallMode 为 downloadBootstrapper，NSIS 包仅含应用本体（约 13 MB）
+      - name: Build Tauri bundle (nsis)
+        run: pnpm tauri build --bundles nsis
 
-      - name: Upload installer artifacts
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: brows3-windows-installers
-          path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
+          name: brows3-windows-installer
+          path: src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
