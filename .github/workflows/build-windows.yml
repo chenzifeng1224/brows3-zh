@@ -1,6 +1,5 @@
 name: build-windows
 
-# 精简版 Windows 专用构建：只出安装包 exe，不需要任何密钥
 on:
   push:
     branches: [ main ]
@@ -17,10 +16,10 @@ jobs:
         with:
           node-version: 22
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.2.2
+      - name: Enable corepack & prepare pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.2.2 --activate
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@1.97.1
@@ -28,7 +27,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: 安装前端依赖
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: 构建前端
         run: pnpm build
