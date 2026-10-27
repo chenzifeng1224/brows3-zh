@@ -15,24 +15,18 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: 'npm'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.2.2
-          run_install: false
-
-      # Windows 关键修复：把pnpm目录写入GITHUB_PATH，后续步骤才能找到pnpm
-      - name: Export PNPM_HOME to PATH
-        run: |
-          echo "$env:PNPM_HOME" | Out-File -FilePath $env:GITHUB_PATH -Append
+      # 重点：npm全局安装指定版本pnpm，直接进node的PATH，Windows不会找不到
+      - name: Install pnpm via npm
+        run: npm install -g pnpm@11.2.2
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Install dependencies
+      - name: Install dependencies (pnpm workspace)
         run: pnpm install
 
       - name: Frontend build (next build)
