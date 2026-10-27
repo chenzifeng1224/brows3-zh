@@ -92,7 +92,7 @@ export default function ProfileSelector() {
           displayEmpty
           renderValue={(selected) => {
             if (!selected) {
-              return <Typography variant="body2" color="text.secondary">Select Profile</Typography>;
+              return <Typography variant="body2" color="text.secondary">选择配置</Typography>;
             }
             const profile = profiles.find((p) => p.id === selected);
             return (
@@ -125,7 +125,7 @@ export default function ProfileSelector() {
           <MenuItem value="manage">
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
               <AddIcon sx={{ fontSize: 18 }} />
-              <Typography variant="body2">Manage Profiles</Typography>
+              <Typography variant="body2">管理配置</Typography>
             </Box>
           </MenuItem>
         </Select>

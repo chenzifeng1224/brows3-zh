@@ -177,7 +177,7 @@ function HomeContent() {
       }}>
         <CloudIcon sx={{ fontSize: 100, color: 'text.secondary', mb: 3, opacity: 0.5 }} />
         <Typography variant="h5" color="text.primary" gutterBottom fontWeight={600}>
-          No Profile Selected
+          未选择配置
         </Typography>
         <Typography color="text.secondary" sx={{ maxWidth: 400, mb: 4 }}>
           请从顶部栏选择一个已有配置，或新建一个配置，以开始浏览你的 S3 存储桶。
@@ -241,7 +241,7 @@ function HomeContent() {
     
   return (
     <TableContainer component={Paper} variant="outlined" sx={{ mb: 4, borderRadius: 1.5, overflow: 'hidden' }}>
-      <Table sx={{ minWidth: 650 }} aria-label="buckets table">
+      <Table sx={{ minWidth: 650 }} aria-label="存储桶表格">
         <TableHead>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
             <TableCell sx={{ fontWeight: 600 }}>存储桶名称</TableCell>

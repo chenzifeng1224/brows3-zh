@@ -9,7 +9,7 @@ export const isTauri = (): boolean => {
 // Dynamically get Tauri invoke - only import when actually in Tauri context
 const getTauriInvoke = async () => {
   if (!isTauri()) {
-    throw new Error('Not running in Tauri environment. This feature requires the desktop application.');
+    throw new Error('当前不在 Tauri 环境中运行，此功能需要桌面应用。');
   }
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke;
@@ -24,7 +24,7 @@ const invoke = async <T>(cmd: string, args?: Record<string, unknown>): Promise<T
   try {
     const tauriInvoke = await getTauriInvoke();
     if (scopedArgs.expectedProfileId && scopedArgs.expectedProfileId !== useProfileStore.getState().activeProfileId) {
-      throw new Error('The active profile changed. Select the items again.');
+      throw new Error('当前配置已变更，请重新选择项目。');
     }
     const result = await tauriInvoke<T>(cmd, scopedArgs);
     store.addLog('success', cmd);
@@ -127,7 +127,7 @@ export const copyToClipboard = async (text: string): Promise<void> => {
     return;
   }
 
-  throw new Error('Clipboard API is not available');
+  throw new Error('剪贴板 API 不可用');
 };
 
 export interface LogFileInfo {
@@ -359,7 +359,7 @@ export const objectApi = {
 export const operationsApi = {
   async copyBetweenProfiles(items: import('@/store/clipboardStore').ClipboardItem[], destinationBucket: string, destinationRegion: string, destinationPrefix: string, expectedProfileId: string): Promise<number> {
     if (expectedProfileId !== useProfileStore.getState().activeProfileId) {
-      throw new Error('The destination profile changed. Paste again.');
+      throw new Error('目标配置已变更，请重新粘贴。');
     }
     return invoke<number>('copy_between_profiles', { items, destinationBucket, destinationRegion, destinationPrefix, expectedProfileId });
   },
@@ -379,7 +379,7 @@ export const operationsApi = {
 
   async copyObject(sourceBucket: string, sourceRegion: string | undefined, sourceKey: string, destinationBucket: string, destinationRegion: string | undefined, destinationKey: string, expectedProfileId = useProfileStore.getState().activeProfileId): Promise<void> {
     if (!expectedProfileId || expectedProfileId !== useProfileStore.getState().activeProfileId) {
-      throw new Error('The active profile changed. Copy or select the items again.');
+      throw new Error('当前配置已变更，请重新复制或选择项目。');
     }
     try {
       await invoke<void>('copy_object', { sourceBucket, sourceRegion, sourceKey, destinationBucket, destinationRegion, destinationKey, expectedProfileId });
@@ -388,7 +388,7 @@ export const operationsApi = {
 
   async moveObject(sourceBucket: string, sourceRegion: string | undefined, sourceKey: string, destinationBucket: string, destinationRegion: string | undefined, destinationKey: string, expectedProfileId = useProfileStore.getState().activeProfileId): Promise<void> {
     if (!expectedProfileId || expectedProfileId !== useProfileStore.getState().activeProfileId) {
-      throw new Error('The active profile changed. Copy or select the items again.');
+      throw new Error('当前配置已变更，请重新复制或选择项目。');
     }
     try {
       await invoke<void>('move_object', { sourceBucket, sourceRegion, sourceKey, destinationBucket, destinationRegion, destinationKey, expectedProfileId });
@@ -441,11 +441,11 @@ export interface VersionCursor { key_marker: string; version_id_marker: string }
 export interface VersionHistory { versioning: string; versions: ObjectVersion[]; next: VersionCursor | null }
 export const versionsApi = {
   async list(bucket: string, region: string, key: string, cursor: VersionCursor | null, expectedProfileId: string): Promise<VersionHistory> {
-    if (useProfileStore.getState().activeProfileId !== expectedProfileId) throw new Error('Profile changed. Open history again.');
+    if (useProfileStore.getState().activeProfileId !== expectedProfileId) throw new Error('配置已变更，请重新打开历史记录。');
     return invoke<VersionHistory>('list_object_versions', { bucket, region, key, cursor, expectedProfileId });
   },
   async restore(bucket: string, region: string, key: string, versionId: string, expectedCurrentVersion: string, confirmed: boolean, expectedProfileId: string): Promise<string> {
-    if (useProfileStore.getState().activeProfileId !== expectedProfileId) throw new Error('Profile changed. Open history again.');
+    if (useProfileStore.getState().activeProfileId !== expectedProfileId) throw new Error('配置已变更，请重新打开历史记录。');
     return invoke<string>('restore_object_version', { bucket, region, key, versionId, expectedCurrentVersion, confirmed, expectedProfileId });
   },
 };

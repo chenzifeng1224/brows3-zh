@@ -14,7 +14,7 @@ use tauri::State;
 pub(super) fn validate_operation_profile(expected: Option<&str>, actual: &str) -> Result<()> {
     if expected != Some(actual) {
         return Err(crate::error::AppError::ConfigError(
-            "The active profile changed. Copy or select the items again.".to_string(),
+            "当前配置已更改，请重新复制或选择项目。".to_string(),
         ));
     }
     Ok(())
@@ -61,7 +61,7 @@ fn validate_folder_target(
 
         if normalized_destination.starts_with(source_key) {
             return Err(crate::error::AppError::ConfigError(format!(
-                "Cannot copy or move folder '{}' into its own subtree '{}'",
+                "无法将文件夹 '{}' 复制或移动到其自身的子目录 '{}' 中",
                 source_key, destination_key
             )));
         }
@@ -80,7 +80,7 @@ fn parse_object_canned_acl(value: &str) -> Result<ObjectCannedAcl> {
         "bucket-owner-read" => Ok(ObjectCannedAcl::BucketOwnerRead),
         "bucket-owner-full-control" => Ok(ObjectCannedAcl::BucketOwnerFullControl),
         _ => Err(crate::error::AppError::ConfigError(format!(
-            "Unsupported object ACL '{}'",
+            "不支持的对象 ACL '{}'",
             value
         ))),
     }
@@ -102,7 +102,7 @@ pub(crate) fn classify_acl_error(error: &str) -> Option<(&'static str, &'static 
     {
         return Some((
             "unsupported",
-            "ACL permissions are not supported for this bucket or provider. The bucket may use Object Ownership with ACLs disabled.",
+            "该存储桶或服务商不支持 ACL 权限。该存储桶可能使用了禁用 ACL 的 Object Ownership 模式。",
         ));
     }
 
@@ -114,7 +114,7 @@ pub(crate) fn classify_acl_error(error: &str) -> Option<(&'static str, &'static 
     {
         return Some((
             "access_denied",
-            "Your credentials do not allow viewing or changing ACL permissions for this object.",
+            "你的凭据无权查看或更改该对象的 ACL 权限。",
         ));
     }
 
@@ -128,7 +128,7 @@ pub(crate) fn s3_error_message<E: aws_sdk_s3::error::ProvideErrorMetadata>(
         Some(service) => format!(
             "{}: {}",
             service.code().unwrap_or("S3Error"),
-            service.message().unwrap_or("Request failed"),
+            service.message().unwrap_or("请求失败"),
         ),
         None => error.to_string(),
     }
@@ -162,7 +162,7 @@ impl CopyAclHeaders {
 fn quoted_acl_value(kind: &str, value: &str) -> Result<String> {
     if value.chars().any(|character| character.is_control()) {
         return Err(crate::error::AppError::InvalidContent(
-            "Object ACL contains an invalid control character".to_string(),
+            "对象 ACL 包含无效的控制字符".to_string(),
         ));
     }
     let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
@@ -175,7 +175,7 @@ fn acl_grantee_header(grantee: &aws_sdk_s3::types::Grantee) -> Result<String> {
             .id()
             .ok_or_else(|| {
                 crate::error::AppError::InvalidContent(
-                    "Object ACL canonical user is missing its ID".to_string(),
+                    "对象 ACL 的规范用户缺少 ID".to_string(),
                 )
             })
             .and_then(|value| quoted_acl_value("id", value)),
@@ -183,7 +183,7 @@ fn acl_grantee_header(grantee: &aws_sdk_s3::types::Grantee) -> Result<String> {
             .email_address()
             .ok_or_else(|| {
                 crate::error::AppError::InvalidContent(
-                    "Object ACL email grantee is missing its address".to_string(),
+                    "对象 ACL 的邮箱授权对象缺少地址".to_string(),
                 )
             })
             .and_then(|value| quoted_acl_value("emailAddress", value)),
@@ -191,12 +191,12 @@ fn acl_grantee_header(grantee: &aws_sdk_s3::types::Grantee) -> Result<String> {
             .uri()
             .ok_or_else(|| {
                 crate::error::AppError::InvalidContent(
-                    "Object ACL group grantee is missing its URI".to_string(),
+                    "对象 ACL 的组授权对象缺少 URI".to_string(),
                 )
             })
             .and_then(|value| quoted_acl_value("uri", value)),
         other => Err(crate::error::AppError::InvalidContent(format!(
-            "Cannot safely preserve unsupported ACL grantee type '{}'",
+            "无法安全保留不受支持的 ACL 授权对象类型 '{}'",
             other.as_str()
         ))),
     }
@@ -222,7 +222,7 @@ pub(crate) fn copy_acl_headers(
             Permission::WriteAcp => headers.write_acp.push(header),
             other => {
                 return Err(crate::error::AppError::InvalidContent(format!(
-                    "Cannot safely preserve unsupported object ACL permission '{}'",
+                    "无法安全保留不受支持的对象 ACL 权限 '{}'",
                     other.as_str()
                 )))
             }
@@ -283,7 +283,7 @@ async fn multipart_copy_object(
     let (client, bucket_name, key) = destination;
     if head.e_tag().is_none() {
         return Err(crate::error::AppError::S3Error(
-            "Cannot safely copy an object without an ETag".into(),
+            "缺少 ETag 的对象无法安全复制".into(),
         ));
     }
     let object_size = head
@@ -291,7 +291,7 @@ async fn multipart_copy_object(
         .and_then(|value| u64::try_from(value).ok())
         .ok_or_else(|| {
             crate::error::AppError::S3Error(format!(
-                "S3 returned an invalid size for s3://{bucket_name}/{key}"
+                "S3 为 s3://{bucket_name}/{key} 返回了无效的大小"
             ))
         })?;
     let copy_source = copy_source(source_bucket, source_key, head.version_id());
@@ -310,7 +310,7 @@ async fn multipart_copy_object(
                 None
             } else {
                 return Err(crate::error::AppError::S3Error(format!(
-                    "Cannot safely copy the object because the object's tags could not be read and preserved: {error_string}"
+                    "无法读取并保留对象标签，因此无法安全复制该对象：{error_string}"
                 )));
             }
         }
@@ -366,19 +366,19 @@ async fn multipart_copy_object(
             {
                 build_create_request(None).send().await.map_err(|retry_error| {
                     crate::error::AppError::S3Error(format!(
-                        "Could not start multipart object copy after retrying without ACL headers: {retry_error}"
+                        "去掉 ACL 头重试后仍无法启动分段对象复制：{retry_error}"
                     ))
                 })?
             } else {
                 return Err(crate::error::AppError::S3Error(format!(
-                    "Could not start multipart object copy: {error_string}"
+                    "无法启动分段对象复制：{error_string}"
                 )));
             }
         }
     };
     let upload_id = created.upload_id().ok_or_else(|| {
         crate::error::AppError::S3Error(format!(
-            "S3 did not return an upload ID while copying the object for s3://{bucket_name}/{key}"
+            "复制 s3://{bucket_name}/{key} 时 S3 未返回上传 ID"
         ))
     })?;
     let mut guard = crate::s3::MultipartUploadGuard::new(
@@ -405,7 +405,7 @@ async fn multipart_copy_object(
                 .await
                 .map_err(|error| {
                     crate::error::AppError::S3Error(format!(
-                        "Multipart object copy failed at part {} of {} for s3://{bucket_name}/{key}: {error}",
+                        "分段对象复制失败：s3://{bucket_name}/{key} 第 {} / {} 段：{error}",
                         part.number,
                         plan.parts.len()
                     ))
@@ -415,7 +415,7 @@ async fn multipart_copy_object(
                 .and_then(|result| result.e_tag())
                 .ok_or_else(|| {
                     crate::error::AppError::S3Error(format!(
-                        "S3 did not return an ETag for copied part {} of s3://{bucket_name}/{key}",
+                        "S3 未返回 s3://{bucket_name}/{key} 第 {} 个已复制分段的 ETag",
                         part.number
                     ))
                 })?;
@@ -442,7 +442,7 @@ async fn multipart_copy_object(
             .await
             .map_err(|error| {
                 crate::error::AppError::S3Error(format!(
-                    "Could not complete multipart object copy for s3://{bucket_name}/{key}: {error}"
+                    "无法完成 s3://{bucket_name}/{key} 的分段对象复制：{error}"
                 ))
             })?;
 
@@ -498,7 +498,7 @@ pub async fn put_object(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
     put_object_with_profile(
@@ -604,7 +604,7 @@ async fn put_object_with_profile(
 
             retry_request.send().await.map_err(|e| {
                 crate::error::AppError::S3Error(format!(
-                    "Retry put failed: {}",
+                    "重试上传失败：{}",
                     aws_sdk_s3::error::DisplayErrorContext(&e)
                 ))
             })?;
@@ -639,7 +639,7 @@ pub async fn get_object(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -694,7 +694,7 @@ pub async fn get_object(
                     .send()
                     .await
                     .map_err(|e| {
-                        crate::error::AppError::S3Error(format!("Retry get failed: {}", e))
+                        crate::error::AppError::S3Error(format!("重试获取失败：{}", e))
                     })?
             } else {
                 return Err(crate::error::AppError::S3Error(err.to_string()));
@@ -738,7 +738,7 @@ pub async fn delete_object(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
     delete_object_with_profile(bucket_name, bucket_region, key, active_profile, &s3_state).await
@@ -799,7 +799,7 @@ async fn delete_object_with_profile(
                 .send()
                 .await
                 .map_err(|e| {
-                    crate::error::AppError::S3Error(format!("Retry delete failed: {}", e))
+                    crate::error::AppError::S3Error(format!("重试删除失败：{}", e))
                 })?;
         } else {
             return Err(crate::error::AppError::S3Error(err.to_string()));
@@ -841,7 +841,7 @@ pub async fn copy_object(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     validate_operation_profile(expected_profile_id.as_deref(), &active_profile.id)?;
     copy_object_with_profile(
@@ -1025,7 +1025,7 @@ async fn copy_single_object(
     let etag = head
         .e_tag()
         .ok_or_else(|| {
-            crate::error::AppError::S3Error("Cannot safely copy an object without an ETag".into())
+            crate::error::AppError::S3Error("缺少 ETag 的对象无法安全复制".into())
         })?
         .to_string();
     let acl = match source_client
@@ -1047,7 +1047,7 @@ async fn copy_single_object(
         }
         Err(error) => {
             return Err(crate::error::AppError::S3Error(format!(
-                "Cannot preserve source permissions: {error}"
+                "无法保留源权限：{error}"
             )))
         }
     };
@@ -1077,7 +1077,7 @@ async fn copy_object_from_head(
         .content_length()
         .and_then(|value| u64::try_from(value).ok())
         .ok_or_else(|| {
-            crate::error::AppError::S3Error("S3 did not return a valid object size".into())
+            crate::error::AppError::S3Error("S3 未返回有效的对象大小".into())
         })?;
     if size > 5 * 1024 * 1024 * 1024 {
         multipart_copy_object(
@@ -1131,7 +1131,7 @@ fn build_delete_request(chunk: &[String]) -> Result<Delete> {
     let mut delete_ids = Vec::new();
     for key in chunk {
         let obj_id = ObjectIdentifier::builder().key(key).build().map_err(|e| {
-            crate::error::AppError::S3Error(format!("Invalid object key '{}': {}", key, e))
+            crate::error::AppError::S3Error(format!("对象键无效 '{}'：{}", key, e))
         })?;
         delete_ids.push(obj_id);
     }
@@ -1140,7 +1140,7 @@ fn build_delete_request(chunk: &[String]) -> Result<Delete> {
         .set_objects(Some(delete_ids))
         .build()
         .map_err(|e| {
-            crate::error::AppError::S3Error(format!("Failed to build delete request: {}", e))
+            crate::error::AppError::S3Error(format!("构建删除请求失败：{}", e))
         })
 }
 
@@ -1159,16 +1159,16 @@ fn validate_delete_result(
     let failures = errors
         .iter()
         .map(|err| {
-            let key = err.key.as_deref().unwrap_or("<unknown>");
+            let key = err.key.as_deref().unwrap_or("<未知>");
             let code = err.code.as_deref().unwrap_or("Unknown");
-            let message = err.message.as_deref().unwrap_or("Delete failed");
+            let message = err.message.as_deref().unwrap_or("删除失败");
             format!("{key} ({code}: {message})")
         })
         .collect::<Vec<_>>()
         .join(", ");
 
     Err(crate::error::AppError::S3Error(format!(
-        "Failed to delete some objects in bucket '{}': {}",
+        "存储桶 '{}' 中部分对象删除失败：{}",
         bucket_name, failures
     )))
 }
@@ -1187,7 +1187,7 @@ async fn delete_keys_individually(
             .await
             .map_err(|err| {
                 crate::error::AppError::S3Error(format!(
-                    "Fallback delete failed for '{}': {}",
+                    "逐条删除回退失败 '{}'：{}",
                     key, err
                 ))
             })?;
@@ -1213,7 +1213,7 @@ pub async fn delete_objects(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
     delete_objects_with_profile(bucket_name, bucket_region, keys, active_profile, &s3_state).await
@@ -1352,7 +1352,7 @@ pub async fn move_object(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     validate_operation_profile(expected_profile_id.as_deref(), &active_profile.id)?;
     move_object_with_profile(
@@ -1505,7 +1505,7 @@ async fn move_object_with_profile(
 async fn delete_copied_source(client: &Client, bucket: &str, key: &str, etag: &str) -> Result<()> {
     client.delete_object().bucket(bucket).key(key).if_match(etag).send().await
         .map_err(|error| crate::error::AppError::S3Error(format!(
-            "Copied {key}, but could not conditionally remove the source. It may have changed, or the provider may not support conditional deletion. The destination copy remains: {error}"
+            "已复制 {key}，但无法按条件删除源对象。源对象可能已更改，或服务商不支持条件删除。目标副本仍然保留：{error}"
         )))?;
     Ok(())
 }
@@ -1519,7 +1519,7 @@ pub(super) async fn save_object_text(
 ) -> Result<Option<String>> {
     let conflict = || {
         crate::error::AppError::S3Error(
-        "This object has changed since it was opened. Copy your edits, then reopen it before saving.".into()
+        "该对象在打开后已被修改。请复制你的修改，然后重新打开再保存。".into()
     )
     };
     if expected_etag.is_empty() {
@@ -1537,7 +1537,7 @@ pub(super) async fn save_object_text(
     }
     if head.sse_customer_algorithm().is_some() {
         return Err(crate::error::AppError::ConfigError(
-            "This object requires a customer encryption key and cannot be edited safely.".into(),
+            "该对象需要客户提供的加密密钥，无法安全编辑。".into(),
         ));
     }
     let acl = match client
@@ -1559,7 +1559,7 @@ pub(super) async fn save_object_text(
         }
         Err(error) => {
             return Err(crate::error::AppError::S3Error(format!(
-                "Cannot save because the current permissions could not be preserved: {error}"
+                "无法保存，因为无法保留当前权限：{error}"
             )))
         }
     };
@@ -1582,7 +1582,7 @@ pub(super) async fn save_object_text(
         }
         Err(error) => {
             return Err(crate::error::AppError::S3Error(format!(
-                "Cannot save because the current tags could not be preserved: {error}"
+                "无法保存，因为无法保留当前标签：{error}"
             )))
         }
     };
@@ -1640,7 +1640,7 @@ pub(super) async fn save_object_text(
         {
             conflict()
         } else {
-            crate::error::AppError::S3Error(format!("Save failed: {error}"))
+            crate::error::AppError::S3Error(format!("保存失败：{error}"))
         }
     })
 }
@@ -1662,7 +1662,7 @@ pub async fn set_object_content_type(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -1697,7 +1697,7 @@ pub async fn set_object_content_type(
     }
     if head.e_tag().is_none() {
         return Err(crate::error::AppError::S3Error(format!(
-            "Cannot safely update Content-Type because S3 did not return an ETag for s3://{bucket_name}/{key}"
+            "无法安全更新 Content-Type，因为 S3 未返回 s3://{bucket_name}/{key} 的 ETag"
         )));
     }
 
@@ -1705,19 +1705,19 @@ pub async fn set_object_content_type(
         .content_length()
         .ok_or_else(|| {
             crate::error::AppError::S3Error(format!(
-                "S3 did not return the size of s3://{bucket_name}/{key}"
+                "S3 未返回 s3://{bucket_name}/{key} 的大小"
             ))
         })
         .and_then(|value| {
             u64::try_from(value).map_err(|_| {
                 crate::error::AppError::S3Error(format!(
-                    "S3 returned an invalid negative size for s3://{bucket_name}/{key}"
+                    "S3 为 s3://{bucket_name}/{key} 返回了无效的负数大小"
                 ))
             })
         })?;
     if head.sse_customer_algorithm().is_some() {
         return Err(crate::error::AppError::ConfigError(
-            "Content-Type cannot be changed safely for an SSE-C encrypted object because its customer encryption key is not available"
+            "SSE-C 加密对象的客户加密密钥不可用，无法安全更改 Content-Type"
                 .to_string(),
         ));
     }
@@ -1737,7 +1737,7 @@ pub async fn set_object_content_type(
                 None
             } else {
                 return Err(crate::error::AppError::S3Error(format!(
-                    "Cannot safely update Content-Type because the current object ACL could not be read and preserved: {error_string}"
+                    "无法安全更新 Content-Type，因为无法读取并保留当前对象 ACL：{error_string}"
                 )));
             }
         }
@@ -1811,12 +1811,12 @@ pub async fn set_object_content_type(
             // there is no ACL state to lose in that mode.
             build_request(None).send().await.map_err(|retry_error| {
                 crate::error::AppError::S3Error(format!(
-                    "Content-Type update failed after retrying without ACL headers: {retry_error}"
+                    "去掉 ACL 头重试后 Content-Type 更新仍失败：{retry_error}"
                 ))
             })?;
         } else {
             return Err(crate::error::AppError::S3Error(format!(
-                "Content-Type update failed: {error_string}"
+                "Content-Type 更新失败：{error_string}"
             )));
         }
     }
@@ -1881,7 +1881,7 @@ pub async fn get_object_permissions(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -1932,7 +1932,7 @@ pub async fn get_object_permissions(
     let representative_key = target_keys
         .first()
         .cloned()
-        .ok_or_else(|| crate::error::AppError::S3Error("No permission target found".to_string()))?;
+        .ok_or_else(|| crate::error::AppError::S3Error("未找到权限目标".to_string()))?;
 
     let output = match client
         .get_object_acl()
@@ -2015,7 +2015,7 @@ pub async fn set_object_permissions(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -2097,7 +2097,7 @@ pub async fn get_object_metadata(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -2169,7 +2169,7 @@ pub async fn get_object_metadata(
                         if e_str.contains("403") || e_str.contains("Access Denied") {
                             crate::error::AppError::AccessDenied(e_str)
                         } else {
-                            crate::error::AppError::S3Error(format!("Retry head failed: {}", e_str))
+                            crate::error::AppError::S3Error(format!("重试 HEAD 请求失败：{}", e_str))
                         }
                     })?
             } else {
@@ -2245,7 +2245,7 @@ mod tests {
             classify_acl_error("AccessControlListNotSupported"),
             Some((
                 "unsupported",
-                "ACL permissions are not supported for this bucket or provider. The bucket may use Object Ownership with ACLs disabled."
+                "该存储桶或服务商不支持 ACL 权限。该存储桶可能使用了禁用 ACL 的 Object Ownership 模式。"
             ))
         );
         assert!(matches!(
@@ -2455,7 +2455,7 @@ mod move_profile_tests {
         let error = delete_copied_source(&client, "bucket", "source", "\"copied\"")
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("destination copy remains"));
+        assert!(error.to_string().contains("目标副本仍然保留"));
         let requests = server.await.unwrap();
         assert_eq!(requests.len(), 1);
         assert!(requests[0].contains("if-match: \"copied\""));
@@ -2663,7 +2663,7 @@ mod text_save_tests {
         let error = save_object_text(&client, "bucket", "file.txt", "edited".into(), "\"old\"")
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("changed since it was opened"));
+        assert!(error.to_string().contains("打开后已被修改"));
         assert_eq!(server.await.unwrap().len(), 1);
     }
 
@@ -2679,7 +2679,7 @@ mod text_save_tests {
         let error = save_object_text(&client, "bucket", "file.txt", "edited".into(), "\"old\"")
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("changed since it was opened"));
+        assert!(error.to_string().contains("打开后已被修改"));
         assert_eq!(server.await.unwrap().len(), 4);
     }
 
@@ -2695,7 +2695,7 @@ mod text_save_tests {
             .unwrap_err();
         assert!(error
             .to_string()
-            .contains("permissions could not be preserved"));
+            .contains("无法保留当前权限"));
         assert_eq!(server.await.unwrap().len(), 2);
     }
 }

@@ -24,13 +24,13 @@ fn text_preview_size_error(actual_bytes: Option<u64>, max_bytes: u64) -> crate::
     let limit_mb = max_bytes as f64 / 1024.0 / 1024.0;
     let message = if let Some(actual_bytes) = actual_bytes {
         format!(
-            "Object is too large to preview as text ({:.2} MB; configured limit {:.0} MB). Increase the text preview limit in Settings or download it.",
+            "对象过大，无法以文本方式预览（{:.2} MB；配置上限 {:.0} MB）。请在设置中提高文本预览上限，或下载后查看。",
             actual_bytes as f64 / 1024.0 / 1024.0,
             limit_mb
         )
     } else {
         format!(
-            "Object exceeds the configured text preview limit of {:.0} MB. Increase the limit in Settings or download it.",
+            "对象超出配置的文本预览上限 {:.0} MB。请在设置中提高上限，或下载后查看。",
             limit_mb
         )
     };
@@ -101,7 +101,7 @@ fn paginate_folder_content(
 ) -> Result<ListObjectsResult> {
     let expired = || {
         crate::error::AppError::ConfigError(
-            "This listing has changed. Refresh the folder to continue.".to_string(),
+            "该列表已发生变化，请刷新文件夹后继续。".to_string(),
         )
     };
     let offset = match continuation_token {
@@ -154,7 +154,7 @@ async fn list_complete_folder_content(
     loop {
         if request_count >= MAX_COMPLETE_LIST_REQUESTS {
             return Err(crate::error::AppError::ConfigError(format!(
-                "This folder requires more than {} S3 LIST requests for complete-result sorting. Use name ascending or narrow the prefix.",
+                "该文件夹需要超过 {} 次 S3 LIST 请求才能完成完整结果排序。请改用名称升序或缩小前缀范围。",
                 MAX_COMPLETE_LIST_REQUESTS
             )));
         }
@@ -203,7 +203,7 @@ async fn list_complete_folder_content(
 
         if objects.len().saturating_add(common_prefixes.len()) > MAX_SORTABLE_FOLDER_ITEMS {
             return Err(crate::error::AppError::ConfigError(format!(
-                "This folder exceeds the {}-item safety limit for complete-result sorting. Use name ascending or narrow the prefix.",
+                "该文件夹超过完整结果排序的 {} 项安全上限。请改用名称升序或缩小前缀范围。",
                 MAX_SORTABLE_FOLDER_ITEMS
             )));
         }
@@ -214,7 +214,7 @@ async fn list_complete_folder_content(
                     .next_continuation_token()
                     .ok_or_else(|| {
                         crate::error::AppError::S3Error(
-                            "S3 returned a truncated sorted listing without a continuation token"
+                            "S3 返回了截断的排序列表，但缺少 continuation token"
                                 .to_string(),
                         )
                     })?
@@ -292,7 +292,7 @@ pub async fn list_objects(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -325,7 +325,7 @@ pub async fn list_objects(
 
     if uses_complete_sort && continuation_token.is_some() {
         return Err(crate::error::AppError::ConfigError(
-            "This listing has expired. Refresh the folder to continue.".to_string(),
+            "该列表已过期，请刷新文件夹后继续。".to_string(),
         ));
     }
 
@@ -524,7 +524,7 @@ pub async fn list_objects(
                 retry_req
                     .send()
                     .await
-                    .map_err(|e| crate::error::AppError::S3Error(format!("Retry failed: {}", e)))?
+                    .map_err(|e| crate::error::AppError::S3Error(format!("重试失败：{}", e)))?
             } else {
                 return Err(crate::error::AppError::S3Error(err.to_string()));
             }
@@ -623,7 +623,7 @@ pub async fn search_objects(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -675,7 +675,7 @@ pub async fn search_objects(
                 log::warn!("Search list_objects failed: {}", err);
                 if calls > 0 {
                     return Err(crate::error::AppError::S3Error(format!(
-                        "Search failed after reading {} S3 pages: {}",
+                        "读取 {} 页 S3 结果后搜索失败：{}",
                         calls, err
                     )));
                 }
@@ -717,7 +717,7 @@ pub async fn search_objects(
                     }
 
                     retry_req.send().await.map_err(|e| {
-                        crate::error::AppError::S3Error(format!("Search retry failed: {}", e))
+                        crate::error::AppError::S3Error(format!("搜索重试失败：{}", e))
                     })?
                 } else {
                     return Err(crate::error::AppError::S3Error(err.to_string()));
@@ -777,7 +777,7 @@ pub async fn search_objects(
                 .next_continuation_token()
                 .ok_or_else(|| {
                     crate::error::AppError::S3Error(
-                        "S3 returned a truncated search listing without a continuation token"
+                        "S3 返回了截断的搜索列表，但缺少 continuation token"
                             .to_string(),
                     )
                 })?
@@ -809,7 +809,7 @@ pub async fn get_presigned_url(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -892,7 +892,7 @@ pub async fn get_presigned_url(
                         .map_err(|e| crate::error::AppError::S3Error(e.to_string()))?;
 
                 let req = get_obj.presigned(presigning_config).await.map_err(|e| {
-                    crate::error::AppError::S3Error(format!("Retry presign failed: {}", e))
+                    crate::error::AppError::S3Error(format!("重试预签名失败：{}", e))
                 })?;
                 Ok(req.uri().to_string())
             } else {
@@ -924,7 +924,7 @@ pub async fn get_object_content(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 
@@ -986,7 +986,7 @@ pub async fn get_object_content(
                     .send()
                     .await
                     .map_err(|e| {
-                        crate::error::AppError::S3Error(format!("Retry get content failed: {}", e))
+                        crate::error::AppError::S3Error(format!("重试获取内容失败：{}", e))
                     })?
             } else {
                 return Err(crate::error::AppError::S3Error(err.to_string()));
@@ -1023,13 +1023,13 @@ pub async fn get_object_content(
 
     if is_likely_binary_text_mismatch(&bytes) {
         return Err(crate::error::AppError::InvalidContent(
-            "This object appears to contain binary data and cannot be edited safely in the text editor. Download it to inspect locally.".to_string(),
+            "该对象似乎包含二进制数据，无法在文本编辑器中安全编辑。请下载后在本地查看。".to_string(),
         ));
     }
 
     let content = String::from_utf8(bytes).map_err(|_| {
         crate::error::AppError::InvalidContent(
-            "This object is not readable as UTF-8 text. Download it to inspect locally."
+            "该对象无法按 UTF-8 文本读取。请下载后在本地查看。"
                 .to_string(),
         )
     })?;
@@ -1056,7 +1056,7 @@ pub async fn put_object_content(
     let active_profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ProfileNotFound("No active profile".into()))?;
+        .ok_or_else(|| crate::error::AppError::ProfileNotFound("未选择任何配置".into()))?;
     drop(profile_manager);
     super::operations::validate_operation_profile(Some(&expected_profile_id), &active_profile.id)?;
 

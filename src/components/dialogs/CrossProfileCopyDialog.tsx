@@ -26,26 +26,26 @@ export default function CrossProfileCopyDialog({ items, bucket, region, prefix, 
     try {
       const count = await operationsApi.copyBetweenProfiles(items, bucket, region, prefix, profileId);
       void useTransferStore.getState().refreshJobs();
-      toast.success(count ? `${count} copies queued. View progress in Uploads.` : 'The selected folders contain no objects. Nothing was queued.');
+      toast.success(count ? `${count} 个复制任务已排队。可在「上传」中查看进度。` : '所选文件夹中没有对象，未排队任何复制任务。');
       if (alive.current) onClose();
     } catch (e) { if (alive.current) setError(String(e)); }
     finally { pending.current = false; if (alive.current) setBusy(false); }
   }
   const buttonSx = { borderRadius: '999px' };
-  return <BaseDialog open title="Copy between profiles" onClose={onClose} closeDisabled={busy} actions={<>
-    <Button size="small" sx={{ ...buttonSx, color: 'text.primary' }} disabled={busy} onClick={onClose}>Cancel</Button>
-    <Button size="small" sx={buttonSx} variant="contained" disabled={busy || !source || !destination} onClick={start}>Copy to destination</Button>
+  return <BaseDialog open title="跨配置复制" onClose={onClose} closeDisabled={busy} actions={<>
+    <Button size="small" sx={{ ...buttonSx, color: 'text.primary' }} disabled={busy} onClick={onClose}>取消</Button>
+    <Button size="small" sx={buttonSx} variant="contained" disabled={busy || !source || !destination} onClick={start}>复制到目标</Button>
   </>}>
-    <Typography variant="body2" sx={{ overflowWrap: 'anywhere', mb: 1 }}>From: {source?.name || 'Source profile unavailable'}</Typography>
-    <Typography variant="body2" sx={{ overflowWrap: 'anywhere', mb: 2 }}>To: {destination?.name || 'Destination profile unavailable'} / s3://{bucket}/{prefix}</Typography>
-    <Typography variant="body2">{items.length} selected {items.length === 1 ? 'item' : 'items'}. Folders include their contents.</Typography>
+    <Typography variant="body2" sx={{ overflowWrap: 'anywhere', mb: 1 }}>来源：{source?.name || '源配置不可用'}</Typography>
+    <Typography variant="body2" sx={{ overflowWrap: 'anywhere', mb: 2 }}>目标：{destination?.name || '目标配置不可用'} / s3://{bucket}/{prefix}</Typography>
+    <Typography variant="body2">已选 {items.length} 项。文件夹会包含其内容。</Typography>
     <Box component="ul" sx={{ pl: 2.5, my: 1, overflowWrap: 'anywhere' }}>{items.slice(0, 5).map(item => <Typography component="li" variant="body2" key={`${item.bucket}/${item.key}`}>s3://{item.bucket}/{item.key}</Typography>)}</Box>
-    {items.length > 5 && <Typography variant="body2" color="text.secondary">And {items.length - 5} more selected items.</Typography>}
-    <Alert severity="info" sx={{ my: 2 }}>Source objects stay unchanged. Existing destination objects will fail safely without replacement. Copies use this computer&apos;s connection and temporary disk space. S3 request and transfer charges may apply.</Alert>
-    <Typography variant="body2" color="text.secondary">Copies contents and content metadata only, not tags, permissions, version history or retention settings. Destination defaults control encryption and storage class.</Typography>
-    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>Up to 10,000 objects per batch. Progress in Uploads includes both download and upload bytes. Cancel queued or running copies there; completed copies remain.</Typography>
-    {(!source || !destination) && <Alert severity="error" sx={{ mt: 2 }}>A profile is no longer available. Close this dialog and copy the items again.</Alert>}
-    {busy && <Box role="status" sx={{ mt: 2 }}><LinearProgress /><Typography variant="body2" sx={{ mt: 1 }}>Checking source objects and queueing copies. Large selections can take a few minutes.</Typography></Box>}
+    {items.length > 5 && <Typography variant="body2" color="text.secondary">另有 {items.length - 5} 个已选项。</Typography>}
+    <Alert severity="info" sx={{ my: 2 }}>源对象保持不变。已存在的目标对象会安全失败，不会被替换。复制使用本机的网络连接和临时磁盘空间。可能产生 S3 请求和传输费用。</Alert>
+    <Typography variant="body2" color="text.secondary">仅复制内容和内容元数据，不复制标签、权限、版本历史或保留设置。加密和存储类由目标端的默认设置决定。</Typography>
+    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>每批最多 10,000 个对象。「上传」中的进度包含下载和上传流量。可在那里取消排队中或进行中的复制；已完成的复制会保留。</Typography>
+    {(!source || !destination) && <Alert severity="error" sx={{ mt: 2 }}>某个配置已不可用。请关闭此对话框后重新复制这些项目。</Alert>}
+    {busy && <Box role="status" sx={{ mt: 2 }}><LinearProgress /><Typography variant="body2" sx={{ mt: 1 }}>正在检查源对象并排队复制。选择较多时可能需要几分钟。</Typography></Box>}
     {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
   </BaseDialog>;
 }

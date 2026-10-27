@@ -34,13 +34,13 @@ pub struct ImportEntry {
 pub fn headers(values: &BTreeMap<String, String>) -> Result<HeaderMap> {
     if values.len() > 20 {
         return Err(AppError::ConfigError(
-            "At most 20 source headers are allowed.".into(),
+            "最多允许 20 个源请求头。".into(),
         ));
     }
     let mut headers = HeaderMap::new();
     for (name, value) in values {
         let name = HeaderName::from_bytes(name.as_bytes())
-            .map_err(|_| AppError::ConfigError("Invalid source header name.".into()))?;
+            .map_err(|_| AppError::ConfigError("源请求头名称无效。".into()))?;
         if matches!(
             name.as_str(),
             "host"
@@ -59,14 +59,14 @@ pub fn headers(values: &BTreeMap<String, String>) -> Result<HeaderMap> {
         ) || value.len() > 8192
         {
             return Err(AppError::ConfigError(
-                "Source header is reserved or too long.".into(),
+                "源请求头为保留项或过长。".into(),
             ));
         }
         let mut value = HeaderValue::from_str(value)
-            .map_err(|_| AppError::ConfigError("Invalid source header value.".into()))?;
+            .map_err(|_| AppError::ConfigError("源请求头值无效。".into()))?;
         value.set_sensitive(true);
         if headers.insert(name, value).is_some() {
-            return Err(AppError::ConfigError("Duplicate source header.".into()));
+            return Err(AppError::ConfigError("源请求头重复。".into()));
         }
     }
     Ok(headers)
@@ -76,13 +76,13 @@ impl ImportEntry {
     pub fn validate(&self) -> Result<()> {
         if !(1..=5).contains(&self.max_attempts) {
             return Err(AppError::ConfigError(
-                "Download attempts must be between 1 and 5.".into(),
+                "下载尝试次数需在 1 到 5 之间。".into(),
             ));
         }
         let url = super::web::parse_url(&self.url)?;
         if url.fragment().is_some() {
             return Err(AppError::ConfigError(
-                "Remove the URL fragment before importing.".into(),
+                "导入前请移除 URL 片段。".into(),
             ));
         }
         if self.path.is_empty()
@@ -96,12 +96,12 @@ impl ImportEntry {
                 .any(|p| p.is_empty() || p == "." || p == "..")
         {
             return Err(AppError::ConfigError(
-                "Enter a relative destination filename/path without empty or dot segments.".into(),
+                "请输入相对的目标文件名/路径，且不能包含空段或点段。".into(),
             ));
         }
         if self.max_bytes == 0 || self.max_bytes > MAX_BYTES {
             return Err(AppError::ConfigError(
-                "Size limit must be between 1 byte and 5 TiB.".into(),
+                "大小上限需在 1 字节到 5 TiB 之间。".into(),
             ));
         }
         if self
@@ -110,7 +110,7 @@ impl ImportEntry {
             .is_some_and(|s| s.len() != 64 || !s.bytes().all(|b| b.is_ascii_hexdigit()))
         {
             return Err(AppError::ConfigError(
-                "SHA-256 must contain exactly 64 hexadecimal characters.".into(),
+                "SHA-256 必须为恰好 64 个十六进制字符。".into(),
             ));
         }
         headers(&self.headers)?;
@@ -143,12 +143,12 @@ fn source_status(status: reqwest::StatusCode) -> Result<()> {
     }
     if status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
         return Err(AppError::S3Error(format!(
-            "Source returned HTTP {}. Retry later.",
+            "源返回 HTTP {}，请稍后重试。",
             status.as_u16()
         )));
     }
     Err(AppError::ConfigError(format!(
-        "Source returned HTTP {}. Check access or replace an expired source URL before retrying.",
+        "源返回 HTTP {}。请检查访问权限，或在重试前更换已过期的源 URL。",
         status.as_u16()
     )))
 }
@@ -200,7 +200,7 @@ where
 {
     if source.url.is_empty() {
         return Err(AppError::ConfigError(
-            "Source URLs are not saved. Use Edit source to re-enter the URL after restarting."
+            "源 URL 未被保存。重启后请编辑来源并重新输入 URL。"
                 .into(),
         ));
     }
@@ -219,7 +219,7 @@ where
         manager.ensure_multipart_job_active(&job.id).await?;
         if attempt > 0 {
             manager
-                .set_job_phase(&job.id, "Retrying source", expected.unwrap_or(0), copied)
+                .set_job_phase(&job.id, "正在重试源", expected.unwrap_or(0), copied)
                 .await;
             while_active(job, manager, async {
                 tokio::time::sleep(Duration::from_secs(1 << attempt)).await;
@@ -233,18 +233,18 @@ where
             let resume = copied > 0 && etag.is_some();
             if resume {
                 request_headers.insert(reqwest::header::RANGE, HeaderValue::from_str(&format!("bytes={copied}-")).unwrap());
-                request_headers.insert(reqwest::header::IF_RANGE, HeaderValue::from_str(etag.as_ref().unwrap()).map_err(|_| AppError::ConfigError("Invalid source ETag.".into()))?);
+                request_headers.insert(reqwest::header::IF_RANGE, HeaderValue::from_str(etag.as_ref().unwrap()).map_err(|_| AppError::ConfigError("源 ETag 无效。".into()))?);
             }
             let mut response = while_active(job, manager, request(request_headers)).await?;
             source_status(response.status())?;
             if response.headers().get(reqwest::header::CONTENT_ENCODING).is_some_and(|v| v != "identity") {
-                return Err(AppError::ConfigError("Source ignored identity encoding; use a direct uncompressed download URL.".into()));
+                return Err(AppError::ConfigError("源未按 identity encoding 要求返回未压缩内容；请使用直接的非压缩下载 URL。".into()));
             }
             if response.status() == reqwest::StatusCode::PARTIAL_CONTENT {
                 let total = response.headers().get(reqwest::header::CONTENT_RANGE).and_then(|v| v.to_str().ok()).and_then(|s| range_total(s, copied));
                 if !resume || total.is_none() || (expected.is_some() && total != expected)
                     || response.headers().get(reqwest::header::ETAG).and_then(|v| v.to_str().ok()) != etag.as_deref() {
-                    return Err(AppError::ConfigError("Source changed or returned an invalid resume response. Retry from the beginning.".into()));
+                    return Err(AppError::ConfigError("源已更改或返回了无效的续传响应，请从头重试。".into()));
                 }
                 expected = total;
             } else if response.status() == reqwest::StatusCode::OK {
@@ -253,22 +253,22 @@ where
                 copied = 0; hasher = Sha256::new();
                 expected = response.content_length();
                 etag = response.headers().get(reqwest::header::ETAG).and_then(|v| v.to_str().ok()).filter(|s| s.starts_with('"') && s.ends_with('"')).map(str::to_owned);
-            } else { return Err(AppError::ConfigError("Source did not return a downloadable file (HTTP 200 or valid 206 required).".into())); }
-            if expected.is_some_and(|n| n > source.max_bytes) { return Err(AppError::ConfigError("Source exceeds the configured size limit.".into())); }
-            manager.set_job_phase(&job.id, "Fetching source", expected.unwrap_or(0), copied).await;
+            } else { return Err(AppError::ConfigError("源未返回可下载的文件（需要 HTTP 200 或有效的 206）。".into())); }
+            if expected.is_some_and(|n| n > source.max_bytes) { return Err(AppError::ConfigError("源超过配置的大小上限。".into())); }
+            manager.set_job_phase(&job.id, "正在获取源", expected.unwrap_or(0), copied).await;
             loop {
                 manager.ensure_multipart_job_active(&job.id).await?;
                 let chunk = while_active(job, manager, async { tokio::time::timeout(Duration::from_secs(60), response.chunk()).await
-                    .map_err(|_| AppError::S3Error("Source download stalled for 60 seconds.".into()))?
-                    .map_err(|_| AppError::S3Error("Source connection ended before the download completed.".into())) }).await?;
+                    .map_err(|_| AppError::S3Error("源下载停滞超过 60 秒。".into()))?
+                    .map_err(|_| AppError::S3Error("源连接在下载完成前中断。".into())) }).await?;
                 let Some(chunk) = chunk else { break };
-                let next = copied.checked_add(chunk.len() as u64).ok_or_else(|| AppError::ConfigError("Source length overflow.".into()))?;
-                if next > source.max_bytes || expected.is_some_and(|n| next > n) { return Err(AppError::ConfigError("Source exceeded its declared size or configured size limit.".into())); }
+                let next = copied.checked_add(chunk.len() as u64).ok_or_else(|| AppError::ConfigError("源长度溢出。".into()))?;
+                if next > source.max_bytes || expected.is_some_and(|n| next > n) { return Err(AppError::ConfigError("源超过了声明的大小或配置的大小上限。".into())); }
                 for bytes in chunk.chunks(16 * 1024) { manager.pace_download(job, bytes.len() as u64).await?; file.write_all(bytes).await?; }
                 hasher.update(&chunk); copied = next;
                 job.progress.lock().unwrap().position = copied;
             }
-            if expected.is_some_and(|n| n != copied) { return Err(AppError::S3Error("Source download was incomplete; nothing was uploaded.".into())); }
+            if expected.is_some_and(|n| n != copied) { return Err(AppError::S3Error("源下载不完整，未上传任何内容。".into())); }
             Ok(())
         }.await;
         match result {
@@ -277,13 +277,13 @@ where
                     format!("{:x}", hasher.clone().finalize()) != digest.to_ascii_lowercase()
                 }) {
                     return Err(AppError::ConfigError(
-                        "SHA-256 mismatch. Nothing was uploaded.".into(),
+                        "SHA-256 校验不匹配，未上传任何内容。".into(),
                     ));
                 }
                 file.flush().await?;
                 drop(file);
                 manager
-                    .set_job_phase(&job.id, "Uploading to S3", copied, 0)
+                    .set_job_phase(&job.id, "正在上传到 S3", copied, 0)
                     .await;
                 return Ok(temporary);
             }
@@ -382,7 +382,7 @@ mod tests {
             "world",
         );
         let (result, requests) = download(vec![first, second], 10, None).await;
-        assert!(result.unwrap_err().to_string().contains("invalid resume"));
+        assert!(result.unwrap_err().to_string().contains("无效的续传响应"));
         assert_eq!(requests.len(), 2);
         let first =
             "HTTP/1.1 200 OK\r\nContent-Length: 10\r\nConnection: close\r\n\r\nhello".into();
@@ -398,7 +398,7 @@ mod tests {
         let (result, _) = download(vec![chunked.clone()], 5, None).await;
         assert_eq!(result.unwrap(), b"hello");
         let (result, _) = download(vec![chunked], 4, None).await;
-        assert!(result.unwrap_err().to_string().contains("size limit"));
+        assert!(result.unwrap_err().to_string().contains("大小上限"));
         let (result, _) = download(
             vec![crate::commands::test_s3::response(
                 200,
@@ -435,10 +435,10 @@ mod tests {
     async fn limits_and_checksums_fail_before_s3_upload() {
         use crate::commands::test_s3::response;
         let (result, _) = download(vec![response(200, "", "too large")], 2, None).await;
-        assert!(result.unwrap_err().to_string().contains("size limit"));
+        assert!(result.unwrap_err().to_string().contains("大小上限"));
         let (result, _) =
             download(vec![response(200, "", "content")], 20, Some("0".repeat(64))).await;
-        assert!(result.unwrap_err().to_string().contains("SHA-256 mismatch"));
+        assert!(result.unwrap_err().to_string().contains("SHA-256 校验不匹配"));
     }
 
     #[tokio::test]

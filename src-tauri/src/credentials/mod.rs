@@ -14,7 +14,7 @@ pub(crate) fn write_private_file(path: &std::path::Path, content: &[u8]) -> Resu
     use std::io::Write;
     let parent = path
         .parent()
-        .ok_or_else(|| crate::error::AppError::IoError("Missing storage directory".to_string()))?;
+        .ok_or_else(|| crate::error::AppError::IoError("缺少存储目录".to_string()))?;
     std::fs::create_dir_all(parent)?;
     let mut replacement = tempfile::NamedTempFile::new_in(parent)?;
     replacement.write_all(content)?;

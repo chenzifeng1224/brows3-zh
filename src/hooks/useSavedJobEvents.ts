@@ -15,7 +15,7 @@ export function useSavedJobEvents() {
     void listen<SavedJob>('saved-job-finished', ({ payload: job }) => {
       if (stopped) return;
       const notify = job.last_run?.status === 'Completed' ? toast.success : toast.error;
-      notify(`${job.config.name}: ${job.last_run?.status ?? 'Finished'}`, job.last_run?.message, { label: 'View jobs', onClick: () => router.push('/jobs') });
+      notify(`${job.config.name}: ${job.last_run?.status ?? '已完成'}`, job.last_run?.message, { label: '查看任务', onClick: () => router.push('/jobs') });
     }).then(keep).catch(error => console.warn('Job notifications unavailable:', error));
     void listen<string>('saved-job-storage-error', ({ payload }) => { if (!stopped) toast.error(payload); }).then(keep).catch(error => console.warn('Job storage notifications unavailable:', error));
     return () => { stopped = true; unlisteners.forEach(stop => stop()); };

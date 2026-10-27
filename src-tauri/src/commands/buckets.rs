@@ -26,7 +26,7 @@ pub async fn list_buckets(
         .get_active_profile()
         .await
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "No active profile selected".to_string())?;
+        .ok_or_else(|| "未选择任何配置".to_string())?;
 
     drop(profile_manager);
 
@@ -59,7 +59,7 @@ pub async fn list_buckets_with_regions(
         .get_active_profile()
         .await
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "No active profile selected".to_string())?;
+        .ok_or_else(|| "未选择任何配置".to_string())?;
 
     drop(profile_manager);
 
@@ -158,7 +158,7 @@ pub async fn get_bucket_region(
         .get_active_profile()
         .await
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "No active profile selected".to_string())?;
+        .ok_or_else(|| "未选择任何配置".to_string())?;
 
     drop(profile_manager);
 

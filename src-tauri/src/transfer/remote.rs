@@ -32,7 +32,7 @@ impl RemoteSource {
             || self.destination_identity != destination.cache_identity()
         {
             return Err(AppError::ConfigError(
-                "Copy profile settings changed or the app restarted. Copy the objects again."
+                "复制的配置设置已更改，或应用已重启。请重新复制这些对象。"
                     .into(),
             ));
         }
@@ -43,17 +43,17 @@ impl RemoteSource {
 pub fn validate_head(head: &HeadObjectOutput) -> Result<(String, u64)> {
     if head.sse_customer_algorithm().is_some() {
         return Err(AppError::ConfigError(
-            "SSE-C objects cannot be copied or restored by this workflow.".into(),
+            "此流程无法复制或恢复 SSE-C 对象。".into(),
         ));
     }
     let etag = head
         .e_tag()
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| AppError::S3Error("Source has no ETag; safe copy is unavailable.".into()))?;
+        .ok_or_else(|| AppError::S3Error("源没有 ETag，无法安全复制。".into()))?;
     let size = head
         .content_length()
         .filter(|n| *n >= 0)
-        .ok_or_else(|| AppError::S3Error("Source has no valid content length.".into()))?
+        .ok_or_else(|| AppError::S3Error("源没有有效的内容长度。".into()))?
         as u64;
     if size > 0 {
         crate::s3::plan_multipart_upload(size)?;
@@ -78,10 +78,10 @@ pub async fn stage(
             .send(),
     )
     .await
-    .map_err(|_| AppError::S3Error("Reading the source timed out.".into()))?
+    .map_err(|_| AppError::S3Error("读取源超时。".into()))?
     .map_err(|e| {
         AppError::S3Error(format!(
-            "Cannot read source object: {}",
+            "无法读取源对象：{}",
             aws_sdk_s3::error::DisplayErrorContext(&e)
         ))
     })?;
@@ -93,7 +93,7 @@ pub async fn stage(
             .is_some_and(|v| output.version_id() != Some(v.as_str()))
     {
         return Err(AppError::S3Error(
-            "Source changed since the copy was queued. Copy again.".into(),
+            "源在复制任务加入队列后已更改，请重新复制。".into(),
         ));
     }
     // Only portable content metadata is copied. Destination defaults determine
@@ -113,15 +113,15 @@ pub async fn stage(
         manager.ensure_multipart_job_active(&job.id).await?;
         let chunk = tokio::time::timeout(Duration::from_secs(60), output.body.next())
             .await
-            .map_err(|_| AppError::S3Error("Source download stalled for 60 seconds.".into()))?;
+            .map_err(|_| AppError::S3Error("源下载停滞超过 60 秒。".into()))?;
         let Some(chunk) = chunk else { break };
         let chunk = chunk.map_err(|e| AppError::S3Error(e.to_string()))?;
         copied = copied
             .checked_add(chunk.len() as u64)
-            .ok_or_else(|| AppError::S3Error("Source length overflow".into()))?;
+            .ok_or_else(|| AppError::S3Error("源长度溢出".into()))?;
         if copied > source.size {
             return Err(AppError::S3Error(
-                "Source exceeded its declared size.".into(),
+                "源超出了其声明的大小。".into(),
             ));
         }
         for bytes in chunk.chunks(16 * 1024) {
@@ -132,7 +132,7 @@ pub async fn stage(
     }
     if copied != source.size {
         return Err(AppError::S3Error(
-            "Source download was incomplete; nothing was uploaded.".into(),
+            "源下载不完整，未上传任何内容。".into(),
         ));
     }
     file.flush().await?;

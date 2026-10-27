@@ -296,7 +296,7 @@ export default function AppShell({ children }: AppShellProps) {
                     <CloudIcon sx={{ fontSize: 36 }} />
                   </Box>
                   <Typography variant="h4" sx={{ fontWeight: 800, mb: 1.5, letterSpacing: '-0.02em' }}>
-                    Welcome to Brows3
+                    欢迎使用 Brows3
                   </Typography>
                   <Typography variant="body1" color="text.secondary" sx={{ mb: 4, lineHeight: 1.6 }}>
                     你的终极 S3 浏览器。要开始使用，你需要连接一个 AWS 账户或 S3 兼容存储。

@@ -129,7 +129,7 @@ function ToastItem({ toast, onClose, onShowDetails }: ToastItemProps) {
                 '&:hover': { opacity: 1, bgcolor: 'transparent' },
               }}
             >
-              Show Details
+              显示详情
             </Button>
           )}
         </Box>
@@ -195,9 +195,9 @@ export default function ToastContainer() {
           {detailsDialog.toast?.type === 'warning' && '⚠️ '}
           {detailsDialog.toast?.type === 'success' && '✅ '}
           {detailsDialog.toast?.type === 'info' && 'ℹ️ '}
-          {detailsDialog.toast?.type === 'error' ? 'Error Details' : 
-           detailsDialog.toast?.type === 'warning' ? 'Warning' :
-           detailsDialog.toast?.type === 'success' ? 'Success' : 'Information'}
+          {detailsDialog.toast?.type === 'error' ? '错误详情' : 
+           detailsDialog.toast?.type === 'warning' ? '警告' :
+           detailsDialog.toast?.type === 'success' ? '成功' : '信息'}
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>
@@ -222,7 +222,7 @@ export default function ToastContainer() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDetails}>Close</Button>
+          <Button onClick={handleCloseDetails}>关闭</Button>
           {detailsDialog.toast?.details && (
             <Button
               variant="contained"
@@ -235,7 +235,7 @@ export default function ToastContainer() {
                 }
               }}
             >
-              Copy to Clipboard
+              复制到剪贴板
             </Button>
           )}
         </DialogActions>

@@ -36,7 +36,7 @@ fn validate_path(path: &std::path::Path) -> Result<()> {
     for component in path.components() {
         if matches!(component, std::path::Component::ParentDir) {
             return Err(crate::error::AppError::IoError(
-                "Invalid path: contains parent directory reference".to_string(),
+                "路径无效：包含上级目录引用".to_string(),
             ));
         }
     }
@@ -46,7 +46,7 @@ fn validate_path(path: &std::path::Path) -> Result<()> {
 fn safe_relative_download_path(key: &str) -> Result<PathBuf> {
     let invalid_path = || {
         crate::error::AppError::IoError(format!(
-            "Invalid object key for folder download: '{}'",
+            "文件夹下载的对象键无效：'{}'",
             key
         ))
     };
@@ -114,7 +114,7 @@ async fn require_active_profile(profile_state: &ProfileState, expected: &str) ->
     let profile = profile_manager
         .get_active_profile()
         .await?
-        .ok_or_else(|| crate::error::AppError::ConfigError("No active profile".to_string()))?;
+        .ok_or_else(|| crate::error::AppError::ConfigError("未选择任何配置".to_string()))?;
     super::operations::validate_operation_profile(Some(expected), &profile.id)?;
     Ok(profile)
 }
@@ -239,16 +239,16 @@ fn collect_upload_files(
 ) -> Result<Vec<(PathBuf, u64, String)>> {
     let parent = root
         .parent()
-        .ok_or_else(|| crate::error::AppError::ConfigError("Choose a folder".into()))?;
+        .ok_or_else(|| crate::error::AppError::ConfigError("请选择文件夹".into()))?;
     let mut files = Vec::new();
     let mut keys = std::collections::HashSet::new();
     for entry in walkdir::WalkDir::new(root).follow_links(false) {
         let entry = entry.map_err(|error| {
-            crate::error::AppError::IoError(format!("Folder upload was not queued: {error}"))
+            crate::error::AppError::IoError(format!("文件夹上传未加入队列：{error}"))
         })?;
         if entry.path_is_symlink() {
             return Err(crate::error::AppError::IoError(format!(
-                "Folder upload contains a symbolic link: {}. Select its target explicitly instead.",
+                "文件夹上传中包含符号链接：{}。请改为直接选择其目标。",
                 entry.path().display()
             )));
         }
@@ -268,14 +268,14 @@ fn collect_upload_files(
             prefix,
             parts
                 .ok_or_else(|| crate::error::AppError::IoError(format!(
-                    "Filename is not valid Unicode: {}",
+                    "文件名不是有效的 Unicode：{}",
                     entry.path().display()
                 )))?
                 .join("/")
         );
         if !keys.insert(key.clone()) {
             return Err(crate::error::AppError::IoError(format!(
-                "Multiple files map to {key}"
+                "多个文件映射到 {key}"
             )));
         }
         let size = entry
@@ -285,7 +285,7 @@ fn collect_upload_files(
         files.push((entry.path().to_path_buf(), size, key));
         if files.len() > 100_000 {
             return Err(crate::error::AppError::ConfigError(
-                "Folder upload exceeds 100,000 files. Select smaller folders.".into(),
+                "文件夹上传超过 100,000 个文件，请选择更小的文件夹。".into(),
             ));
         }
     }
@@ -418,7 +418,7 @@ pub async fn queue_folder_download(
                         .await
                         .map_err(|e| {
                             crate::error::AppError::S3Error(format!(
-                                "Retry folder listing failed: {}",
+                                "重试文件夹列表失败：{}",
                                 e
                             ))
                         })?
@@ -433,7 +433,7 @@ pub async fn queue_folder_download(
     let group_name = format!("s3://{}/{}", bucket_name, prefix);
     let root_path = PathBuf::from(&local_path);
     let selected_root = root_path.parent().ok_or_else(|| {
-        crate::error::AppError::IoError("Choose a download directory".to_string())
+        crate::error::AppError::IoError("请选择下载目录".to_string())
     })?;
     let download_root = DownloadDestination::open_root(selected_root)?;
 
@@ -452,7 +452,7 @@ pub async fn queue_folder_download(
         validate_path(&file_path)?;
         if !destinations.insert(file_path.clone()) {
             return Err(crate::error::AppError::IoError(format!(
-                "Multiple objects would download to {}",
+                "多个对象将下载到 {}",
                 file_path.display()
             )));
         }
@@ -520,7 +520,7 @@ pub async fn retry_transfer(
         .is_some_and(|job| job.url_import.is_some_and(|s| s.url.is_empty()))
     {
         return Err(crate::error::AppError::ConfigError(
-            "Source URLs are not saved. Use Edit source to re-enter the URL after restarting."
+            "源 URL 未被保存。重启后请编辑来源并重新输入 URL。"
                 .into(),
         ));
     }
@@ -530,7 +530,7 @@ pub async fn retry_transfer(
         .is_some_and(|job| job.remote_source.is_some_and(|s| !s.current_session))
     {
         return Err(crate::error::AppError::ConfigError(
-            "Copy the objects again after restarting the app.".into(),
+            "重启应用后请重新复制这些对象。".into(),
         ));
     }
     if transfer_state
@@ -539,14 +539,14 @@ pub async fn retry_transfer(
         .is_some_and(|job| job.sync_source.is_some_and(|s| !s.current_session))
     {
         return Err(crate::error::AppError::ConfigError(
-            "Create a fresh folder sync preview after restarting the app.".into(),
+            "重启应用后请重新生成文件夹同步预览。".into(),
         ));
     }
     if transfer_state.get_job(&job_id).await.is_some_and(|job| {
         matches!(job.transfer_type, TransferType::Download) && job.download_destination.is_none()
     }) {
         return Err(crate::error::AppError::ConfigError(
-            "Queue this download again to choose its destination after restarting.".into(),
+            "重启后请重新加入该下载以选择保存位置。".into(),
         ));
     }
     let new_id = transfer_state.retry_job(&job_id).await;

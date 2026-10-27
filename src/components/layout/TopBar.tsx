@@ -51,7 +51,7 @@ export default function TopBar() {
     >
       {isMobile && (
         <IconButton
-          aria-label="Toggle navigation"
+          aria-label="切换导航"
           aria-controls="sidebar-navigation"
           aria-expanded={sidebarOpen}
           onClick={toggleSidebar}

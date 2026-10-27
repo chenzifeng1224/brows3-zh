@@ -15,7 +15,7 @@ pub fn base_url(value: &str) -> Result<url::Url> {
     let parsed = super::web::parse_url(value)?;
     if parsed.query().is_some() || parsed.fragment().is_some() {
         return Err(AppError::ConfigError(
-            "Public base URLs cannot contain a query or fragment.".into(),
+            "公开基础 URL 不能包含查询参数或片段。".into(),
         ));
     }
     Ok(parsed)
@@ -28,13 +28,13 @@ impl PublicUrls {
         }
         if self.bucket_overrides.len() > 100 {
             return Err(AppError::ConfigError(
-                "At most 100 bucket URL overrides are allowed.".into(),
+                "最多允许 100 个存储桶 URL 覆盖项。".into(),
             ));
         }
         for (bucket, value) in &self.bucket_overrides {
             if bucket.is_empty() || bucket.contains('/') {
                 return Err(AppError::ConfigError(
-                    "Enter a bucket name for each override.".into(),
+                    "请为每个覆盖项输入存储桶名称。".into(),
                 ));
             }
             base_url(value)?;
@@ -46,12 +46,12 @@ impl PublicUrls {
 pub fn build(profile: &Profile, bucket: &str, region: Option<&str>, key: &str) -> Result<String> {
     if bucket.is_empty() || bucket.contains('/') || key.is_empty() || key.ends_with('/') {
         return Err(AppError::ConfigError(
-            "Choose files, not folders, to copy public URLs.".into(),
+            "请选择文件（而非文件夹）来复制公开 URL。".into(),
         ));
     }
     if key.split('/').any(|s| s == "." || s == "..") {
         return Err(AppError::ConfigError(
-            "Keys containing dot-only path segments cannot safely form public URLs.".into(),
+            "包含纯点路径段的键无法安全地组成公开 URL。".into(),
         ));
     }
     let settings = &profile.public_urls;
@@ -73,7 +73,7 @@ pub fn build(profile: &Profile, bucket: &str, region: Option<&str>, key: &str) -
             || region.is_empty()
         {
             return Err(AppError::ConfigError(
-                "Configure a public base URL for this region.".into(),
+                "请为该区域配置公开基础 URL。".into(),
             ));
         }
         let suffix = if region.starts_with("cn-") {

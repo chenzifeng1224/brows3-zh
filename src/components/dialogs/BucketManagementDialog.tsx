@@ -48,7 +48,7 @@ export default function BucketManagementDialog({ action, onClose }: { action: Bu
         const value = JSON.parse(policy);
         if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
       } catch {
-        setError('Enter a valid JSON policy object.');
+        setError('请输入有效的 JSON 策略对象。');
         return;
       }
     }
@@ -58,13 +58,13 @@ export default function BucketManagementDialog({ action, onClose }: { action: Bu
     try {
       if (action.mode === 'create') {
         await bucketApi.createBucket(name.trim(), region.trim(), action.profileId);
-        toast.success(`Created bucket ${name.trim()}`);
+        toast.success(`已创建存储桶 ${name.trim()}`);
       } else if (action.mode === 'delete') {
         await bucketApi.deleteBucket(action.bucket!, action.region, confirmation, action.profileId);
-        toast.success(`Deleted bucket ${action.bucket}`);
+        toast.success(`已删除存储桶 ${action.bucket}`);
       } else {
         await bucketApi.putBucketPolicy(action.bucket!, action.region, policy.trim() ? policy : null, originalPolicy, action.profileId);
-        toast.success(policy.trim() ? 'Bucket policy saved' : 'Bucket policy removed');
+        toast.success(policy.trim() ? '存储桶策略已保存' : '存储桶策略已移除');
       }
       if (mounted.current) onClose();
     } catch (error) {
@@ -75,30 +75,30 @@ export default function BucketManagementDialog({ action, onClose }: { action: Bu
     }
   };
 
-  const title = action.mode === 'create' ? 'Create bucket' : action.mode === 'delete' ? 'Delete bucket' : 'Bucket policy';
-  const label = action.mode === 'create' ? 'Create' : action.mode === 'delete' ? 'Delete' : policy.trim() ? 'Save policy' : 'Remove policy';
+  const title = action.mode === 'create' ? '创建存储桶' : action.mode === 'delete' ? '删除存储桶' : '存储桶策略';
+  const label = action.mode === 'create' ? '创建' : action.mode === 'delete' ? '删除' : policy.trim() ? '保存策略' : '移除策略';
   return (
     <Dialog open onClose={busy ? undefined : onClose} fullWidth maxWidth={action.mode === 'policy' ? 'md' : 'sm'} aria-labelledby="bucket-action-title">
       <DialogTitle id="bucket-action-title">{title}</DialogTitle>
       <DialogContent>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {action.mode === 'create' ? <>
-          <TextField autoFocus fullWidth margin="dense" label="Bucket name" value={name} disabled={busy} onChange={event => setName(event.target.value)} helperText="Use 3 to 63 lowercase letters, numbers, dots or hyphens." />
-          <TextField fullWidth margin="dense" label="Region" value={region} disabled={busy} onChange={event => setRegion(event.target.value)} />
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>The bucket is created with your provider&apos;s default access settings. Some providers require bucket creation through their own console.</Typography>
+          <TextField autoFocus fullWidth margin="dense" label="存储桶名称" value={name} disabled={busy} onChange={event => setName(event.target.value)} helperText="使用 3 到 63 个小写字母、数字、点或连字符。" />
+          <TextField fullWidth margin="dense" label="区域" value={region} disabled={busy} onChange={event => setRegion(event.target.value)} />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>存储桶将以服务商的默认访问设置创建。部分服务商要求通过其自有控制台创建存储桶。</Typography>
         </> : <>
           <Typography sx={{ mb: 2, overflowWrap: 'anywhere' }}>{action.bucket}</Typography>
-          {action.mode === 'delete' ? <Alert severity="warning" sx={{ mb: 2 }}>Only empty buckets can be deleted. Remove all objects, versions and delete markers first. Deletion cannot be undone.</Alert> : <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Changing a policy changes access to this bucket. Clear the policy field to remove the current policy. Avoid editing it elsewhere while saving; your provider cannot atomically reject simultaneous policy changes.</Typography>
-            <TextField fullWidth multiline minRows={10} maxRows={20} label="Policy JSON" value={policy} disabled={!loaded || busy} onChange={event => setPolicy(event.target.value)} sx={{ mb: 2 }} />
-            {!loaded && !error && <Typography role="status">Loading policy...</Typography>}
+          {action.mode === 'delete' ? <Alert severity="warning" sx={{ mb: 2 }}>只能删除空存储桶。请先移除所有对象、版本和删除标记。删除操作无法撤销。</Alert> : <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>更改策略会改变此存储桶的访问权限。清空策略字段即可移除当前策略。保存期间请勿在其他位置同时编辑；服务商无法以原子方式拒绝并发的策略更改。</Typography>
+            <TextField fullWidth multiline minRows={10} maxRows={20} label="策略 JSON" value={policy} disabled={!loaded || busy} onChange={event => setPolicy(event.target.value)} sx={{ mb: 2 }} />
+            {!loaded && !error && <Typography role="status">加载策略中...</Typography>}
           </>}
-          <TextField fullWidth margin="dense" label="Type the bucket name to confirm" value={confirmation} disabled={busy} onChange={event => setConfirmation(event.target.value)} />
+          <TextField fullWidth margin="dense" label="输入存储桶名称以确认" value={confirmation} disabled={busy} onChange={event => setConfirmation(event.target.value)} />
         </>}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={busy}>Cancel</Button>
-        <Button variant="contained" color={action.mode === 'delete' ? 'error' : 'primary'} onClick={submit} disabled={busy || !loaded || (action.mode === 'create' ? !name.trim() || !region.trim() : confirmation !== action.bucket)}>{busy ? 'Working...' : label}</Button>
+        <Button onClick={onClose} disabled={busy}>取消</Button>
+        <Button variant="contained" color={action.mode === 'delete' ? 'error' : 'primary'} onClick={submit} disabled={busy || !loaded || (action.mode === 'create' ? !name.trim() || !region.trim() : confirmation !== action.bucket)}>{busy ? '处理中...' : label}</Button>
       </DialogActions>
     </Dialog>
   );

@@ -31,13 +31,13 @@ interface PermissionsDialogProps {
 }
 
 const ACL_OPTIONS: { value: ObjectCannedAcl; label: string }[] = [
-  { value: 'private', label: 'Private' },
-  { value: 'public-read', label: 'Public read' },
-  { value: 'public-read-write', label: 'Public read and write' },
-  { value: 'authenticated-read', label: 'Authenticated read' },
-  { value: 'bucket-owner-read', label: 'Bucket owner read' },
-  { value: 'bucket-owner-full-control', label: 'Bucket owner full control' },
-  { value: 'aws-exec-read', label: 'AWS exec read' },
+  { value: 'private', label: '私有' },
+  { value: 'public-read', label: '公共读' },
+  { value: 'public-read-write', label: '公共读写' },
+  { value: 'authenticated-read', label: '认证用户读' },
+  { value: 'bucket-owner-read', label: '存储桶所有者读' },
+  { value: 'bucket-owner-full-control', label: '存储桶所有者完全控制' },
+  { value: 'aws-exec-read', label: 'AWS 执行读取' },
 ];
 
 export default function PermissionsDialog({
@@ -97,7 +97,7 @@ export default function PermissionsDialog({
     try {
       const result = await operationsApi.setObjectPermissions(bucketName, bucketRegion, objectKey, isFolder, selectedAcl);
       if (requestId !== requestIdRef.current) return;
-      toast.success(`Updated permissions for ${result.affected_count} object${result.affected_count === 1 ? '' : 's'}.`);
+      toast.success(`已更新 ${result.affected_count} 个对象的权限。`);
       await fetchPermissions();
     } catch (err) {
       if (requestId === requestIdRef.current) {
@@ -112,13 +112,13 @@ export default function PermissionsDialog({
     <BaseDialog
       open={open}
       onClose={onClose}
-      title={`Permissions: ${objectKey.split('/').filter(Boolean).pop() || objectKey}`}
+      title={`权限：${objectKey.split('/').filter(Boolean).pop() || objectKey}`}
       maxWidth="md"
       actions={
         <>
-          <Button onClick={onClose} disabled={saving}>Close</Button>
+          <Button onClick={onClose} disabled={saving}>关闭</Button>
           <Button onClick={handleSave} variant="contained" disabled={loading || saving || !!error || !canEditAcl || !selectedAcl}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? '保存中...' : '保存'}
           </Button>
         </>
       }
@@ -126,7 +126,7 @@ export default function PermissionsDialog({
       {loading ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, gap: 2 }}>
           <CircularProgress size={32} />
-          <Typography variant="body2" color="text.secondary">Loading permissions...</Typography>
+          <Typography variant="body2" color="text.secondary">加载权限中...</Typography>
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -136,32 +136,32 @@ export default function PermissionsDialog({
             <>
               {permissions.status !== 'available' && (
                 <Alert severity={permissions.status === 'unsupported' ? 'warning' : 'error'}>
-                  {permissions.message || 'ACL permissions are not available for this object.'}
+                  {permissions.message || '此对象不支持 ACL 权限。'}
                 </Alert>
               )}
 
               {isFolder && (
                 <Alert severity="info">
-                  The grants shown are from one object in this folder. Saving applies the selected ACL to {permissions.target_count.toLocaleString()} object{permissions.target_count === 1 ? '' : 's'} under this folder.
+                  显示的授权来自此文件夹中的一个对象。保存会将所选 ACL 应用到该文件夹下的 {permissions.target_count.toLocaleString()} 个对象。
                 </Alert>
               )}
 
               <Box>
-                <Typography variant="subtitle2" color="text.secondary">Owner</Typography>
+                <Typography variant="subtitle2" color="text.secondary">所有者</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, wordBreak: 'break-all' }}>
-                  {permissions.owner_display_name || permissions.owner_id || 'Unknown'}
+                  {permissions.owner_display_name || permissions.owner_id || '未知'}
                 </Typography>
               </Box>
 
               <FormControl fullWidth size="small" disabled={!canEditAcl || saving}>
-                <InputLabel id="acl-select-label">New permissions</InputLabel>
+                <InputLabel id="acl-select-label">新权限</InputLabel>
                 <Select
                   labelId="acl-select-label"
-                  label="New permissions"
+                  label="新权限"
                   value={selectedAcl}
                   onChange={(event) => setSelectedAcl(event.target.value as ObjectCannedAcl)}
                 >
-                  <MenuItem value="" disabled>Choose permissions</MenuItem>
+                  <MenuItem value="" disabled>选择权限</MenuItem>
                   {ACL_OPTIONS.map((option) => (
                     <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
                   ))}
@@ -173,20 +173,20 @@ export default function PermissionsDialog({
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>Grantee</TableCell>
-                        <TableCell>Type</TableCell>
-                        <TableCell>Permission</TableCell>
+                        <TableCell>被授权者</TableCell>
+                        <TableCell>类型</TableCell>
+                        <TableCell>权限</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {permissions.grants.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={3} align="center">No grants found.</TableCell>
+                          <TableCell colSpan={3} align="center">未找到授权。</TableCell>
                         </TableRow>
                       ) : permissions.grants.map((grant, index) => (
                         <TableRow key={`${grant.permission}-${grant.id || grant.uri || index}`}>
                           <TableCell sx={{ wordBreak: 'break-all' }}>
-                            {grant.display_name || grant.email_address || grant.uri || grant.id || 'Unknown'}
+                            {grant.display_name || grant.email_address || grant.uri || grant.id || '未知'}
                           </TableCell>
                           <TableCell>{grant.grantee_type || '-'}</TableCell>
                           <TableCell>{grant.permission || '-'}</TableCell>

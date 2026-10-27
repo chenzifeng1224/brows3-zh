@@ -20,10 +20,10 @@ async fn selected_client(
         .await
         .get_active_profile()
         .await?
-        .ok_or_else(|| AppError::ProfileNotFound("No active profile selected".into()))?;
+        .ok_or_else(|| AppError::ProfileNotFound("未选择任何配置".into()))?;
     if profile.id != expected_profile_id {
         return Err(AppError::ConfigError(
-            "The active profile changed. Reopen the bucket action.".into(),
+            "当前配置已更改，请重新打开存储桶操作。".into(),
         ));
     }
     let sdk = crate::s3::client::load_sdk_config(&profile, region.map(str::to_string)).await;
@@ -43,10 +43,10 @@ async fn request<T, E: std::error::Error + 'static>(
         .await
         .map_err(|_| {
             AppError::S3Error(format!(
-                "{action} timed out. Check the connection and refresh before retrying."
+                "操作超时：{action}。请检查连接并刷新后重试。"
             ))
         })?
-        .map_err(|error| AppError::S3Error(format!("{action}: {}", DisplayErrorContext(&error))))
+        .map_err(|error| AppError::S3Error(format!("{action}：{}", DisplayErrorContext(&error))))
 }
 
 fn validate_bucket_name(name: &str) -> Result<()> {
@@ -60,7 +60,7 @@ fn validate_bucket_name(name: &str) -> Result<()> {
         || name.contains("..")
         || name.parse::<std::net::Ipv4Addr>().is_ok()
     {
-        return Err(AppError::ConfigError("Use a bucket name with 3 to 63 lowercase letters, numbers, dots or hyphens. Start and end with a letter or number.".into()));
+        return Err(AppError::ConfigError("存储桶名称需为 3 到 63 个字符，只能包含小写字母、数字、点或连字符，并以字母或数字开头和结尾。".into()));
     }
     Ok(())
 }
@@ -79,11 +79,11 @@ async fn create_with_client(
             client.head_bucket().bucket(name).send(),
         )
         .await
-        .map_err(|_| AppError::S3Error("Checking bucket availability timed out.".into()))?;
+        .map_err(|_| AppError::S3Error("检查存储桶是否可用超时。".into()))?;
         match existing {
             Ok(_) => {
                 return Err(AppError::ConfigError(
-                    "This bucket already exists. Choose a different name.".into(),
+                    "该存储桶已存在，请换一个名称。".into(),
                 ))
             }
             Err(error)
@@ -92,7 +92,7 @@ async fn create_with_client(
                     .is_some_and(|response| response.status().as_u16() == 404) => {}
             Err(error) => {
                 return Err(AppError::S3Error(format!(
-                    "Could not check bucket availability: {}",
+                    "无法检查存储桶是否可用：{}",
                     DisplayErrorContext(&error)
                 )))
             }
@@ -106,7 +106,7 @@ async fn create_with_client(
                 .build(),
         );
     }
-    request("Could not create bucket", create.send()).await?;
+    request("无法创建存储桶", create.send()).await?;
     Ok(())
 }
 
@@ -120,7 +120,7 @@ pub async fn create_bucket(
 ) -> Result<()> {
     if region.trim().is_empty() {
         return Err(AppError::ConfigError(
-            "Enter a region for the bucket.".into(),
+            "请输入存储桶所在区域。".into(),
         ));
     }
     let (profile, client, custom) =
@@ -144,7 +144,7 @@ pub async fn delete_bucket(
 ) -> Result<()> {
     if bucket_name.is_empty() || confirmation != bucket_name {
         return Err(AppError::ConfigError(
-            "Type the bucket name exactly to confirm deletion.".into(),
+            "请输入完全一致的存储桶名称以确认删除。".into(),
         ));
     }
     let (profile, client, _) = selected_client(
@@ -154,7 +154,7 @@ pub async fn delete_bucket(
     )
     .await?;
     request(
-        "Could not delete bucket. It must be empty, including object versions and delete markers",
+        "无法删除存储桶。存储桶必须为空，包括所有对象版本和删除标记",
         client.delete_bucket().bucket(&bucket_name).send(),
     )
     .await?;
@@ -171,7 +171,7 @@ async fn read_policy(client: &Client, bucket: &str) -> Result<Option<String>> {
         client.get_bucket_policy().bucket(bucket).send(),
     )
     .await
-    .map_err(|_| AppError::S3Error("Reading bucket policy timed out.".into()))?;
+    .map_err(|_| AppError::S3Error("读取存储桶策略超时。".into()))?;
     match response {
         Ok(output) => Ok(output.policy),
         Err(error)
@@ -181,7 +181,7 @@ async fn read_policy(client: &Client, bucket: &str) -> Result<Option<String>> {
             Ok(None)
         }
         Err(error) => Err(AppError::S3Error(format!(
-            "Could not read bucket policy: {}",
+            "无法读取存储桶策略：{}",
             DisplayErrorContext(&error)
         ))),
     }
@@ -206,14 +206,14 @@ pub async fn get_bucket_policy(
 fn parse_policy(policy: &str) -> Result<serde_json::Value> {
     if policy.len() > 20 * 1024 {
         return Err(AppError::ConfigError(
-            "Bucket policies must be at most 20 KB.".into(),
+            "存储桶策略不能超过 20 KB。".into(),
         ));
     }
     let value: serde_json::Value = serde_json::from_str(policy)
-        .map_err(|error| AppError::ConfigError(format!("Invalid policy JSON: {error}")))?;
+        .map_err(|error| AppError::ConfigError(format!("策略 JSON 无效：{error}")))?;
     if !value.is_object() {
         return Err(AppError::ConfigError(
-            "A bucket policy must be a JSON object.".into(),
+            "存储桶策略必须是 JSON 对象。".into(),
         ));
     }
     Ok(value)
@@ -231,13 +231,13 @@ async fn write_policy(
     let current = read_policy(client, bucket).await?;
     if current.as_deref().map(parse_policy).transpose()? != expected_value {
         return Err(AppError::ConfigError(
-            "The bucket policy changed since it was opened. Reload it before saving.".into(),
+            "存储桶策略在打开后已被修改，请重新加载后再保存。".into(),
         ));
     }
     match new_value {
         Some(value) => {
             request(
-                "Could not save bucket policy",
+                "无法保存存储桶策略",
                 client
                     .put_bucket_policy()
                     .bucket(bucket)
@@ -248,7 +248,7 @@ async fn write_policy(
         }
         None => {
             request(
-                "Could not remove bucket policy",
+                "无法移除存储桶策略",
                 client.delete_bucket_policy().bucket(bucket).send(),
             )
             .await?;
@@ -321,7 +321,7 @@ mod tests {
                 .await
                 .unwrap_err()
                 .to_string()
-                .contains("already exists")
+                .contains("已存在")
         );
         let requests = server.await.unwrap();
         assert_eq!(requests.len(), 1);
@@ -383,7 +383,7 @@ mod tests {
         let error = write_policy(&client, "bucket", Some("{}"), None)
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("changed since"));
+        assert!(error.to_string().contains("重新加载后再保存"));
         assert_eq!(server.await.unwrap().len(), 1);
     }
 

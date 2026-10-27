@@ -122,7 +122,7 @@ export default function ObjectPreviewDialog({
         if (!cancelled && requestId === loadRequestIdRef.current) {
           console.error("Content loading timed out");
           setIsLoading(false);
-          setError("Loading timed out. Please try again.");
+          setError("加载超时，请重试。");
         }
       }, 120000);
 
@@ -144,7 +144,7 @@ export default function ObjectPreviewDialog({
 
         const resolvedKind = getObjectKind(filename, resolvedContentType);
         if (resolvedKind === 'text' && resolvedObjectSize && resolvedObjectSize > maxPreviewBytes) {
-          setError(`File is too large to preview (${(resolvedObjectSize / 1024 / 1024).toFixed(2)} MB). Increase the ${maxTextPreviewSizeMb} MB text preview limit in Settings or download it.`);
+          setError(`文件过大，无法预览（${(resolvedObjectSize / 1024 / 1024).toFixed(2)} MB）。请在设置中提高 ${maxTextPreviewSizeMb} MB 的文本预览上限，或下载后查看。`);
           return;
         }
 
@@ -178,7 +178,7 @@ export default function ObjectPreviewDialog({
             setTextIdentity({ etag: textContent.e_tag, profileId: textContent.profile_id });
           }
         } else {
-          setError('This object is not previewable in the app. Please download it to inspect locally.');
+          setError('此对象无法在应用内预览，请下载后本地查看。');
         }
       } catch (err) {
         console.error("Failed to load object content:", err);
@@ -224,7 +224,7 @@ export default function ObjectPreviewDialog({
       if (requestId !== loadRequestIdRef.current) return;
       setTextIdentity({ ...textIdentity, etag });
       setContent(editedContent);
-      toast.success('File Saved', `${filename} saved successfully`);
+      toast.success('文件已保存', `${filename} 已保存`);
       onSave?.();
     } catch (err) {
       if (requestId === loadRequestIdRef.current) {
@@ -238,9 +238,9 @@ export default function ObjectPreviewDialog({
   const handleCopyContent = async () => {
     try {
       await copyToClipboard(isEditing ? editedContent : content);
-      toast.info('Copied', 'Content copied to clipboard');
+      toast.info('已复制', '内容已复制到剪贴板');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to copy content');
+      setError(err instanceof Error ? err.message : '复制内容失败');
     }
   };
 
@@ -329,7 +329,7 @@ export default function ObjectPreviewDialog({
                 size="small"
                 sx={{ color: theme.palette.text.secondary, fontWeight: 600 }}
               >
-                Copy
+                复制
               </Button>
             </Box>
             
@@ -341,7 +341,7 @@ export default function ObjectPreviewDialog({
                   variant="contained" 
                   size="small"
                 >
-                  Edit File
+                  编辑文件
                 </Button>
               ) : (
                 <>
@@ -350,7 +350,7 @@ export default function ObjectPreviewDialog({
                     onClick={() => { if (hasChanges) setDiscardAction('cancel'); else { setIsEditing(false); setEditedContent(content); } }}
                     sx={{ color: theme.palette.text.secondary, fontWeight: 600 }}
                   >
-                    Cancel
+                    取消
                   </Button>
                   <Button 
                     startIcon={<SaveIcon />} 
@@ -362,7 +362,7 @@ export default function ObjectPreviewDialog({
                       opacity: !hasChanges ? 0.6 : 1,
                     }}
                   >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
+                    {isSaving ? '保存中...' : '保存更改'}
                   </Button>
                 </>
               )}
@@ -378,20 +378,20 @@ export default function ObjectPreviewDialog({
         if (event.key === 'ArrowRight' && navigation?.onNext) { event.preventDefault(); event.stopPropagation(); navigation.onNext(); }
         if (event.key === ' ' && onToggleSelect && !(event.target as HTMLElement).closest('button')) { event.preventDefault(); event.stopPropagation(); onToggleSelect(); }
       }}>
-        {(navigation || onToggleSelect) && <Box role="group" aria-label="Preview controls" sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', pb: 1.5 }}>
-          {onToggleSelect && <Button size="small" variant="outlined" aria-label="Select file" aria-pressed={isSelected} onClick={onToggleSelect} sx={{ borderRadius: '999px', color: 'text.primary', bgcolor: isSelected ? 'action.selected' : 'transparent' }}>{isSelected ? 'Selected' : 'Select'}</Button>}
+        {(navigation || onToggleSelect) && <Box role="group" aria-label="预览控件" sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', pb: 1.5 }}>
+          {onToggleSelect && <Button size="small" variant="outlined" aria-label="选择文件" aria-pressed={isSelected} onClick={onToggleSelect} sx={{ borderRadius: '999px', color: 'text.primary', bgcolor: isSelected ? 'action.selected' : 'transparent' }}>{isSelected ? '已选择' : '选择'}</Button>}
           {navigation && (navigation.total > 1 || navigation.onNext) && <>
-            <Button size="small" sx={{ borderRadius: '999px', color: 'text.primary' }} aria-label="Previous file" disabled={navBlocked || !navigation.onPrevious} onClick={navigation.onPrevious}>Previous</Button>
-            <Typography variant="caption" aria-label="Preview position">{navigation.index + 1} / {navigation.total}</Typography>
-            <Button size="small" sx={{ borderRadius: '999px', color: 'text.primary' }} aria-label="Next file" disabled={navBlocked || !navigation.onNext} onClick={navigation.onNext}>Next</Button>
+            <Button size="small" sx={{ borderRadius: '999px', color: 'text.primary' }} aria-label="上一个文件" disabled={navBlocked || !navigation.onPrevious} onClick={navigation.onPrevious}>上一个</Button>
+            <Typography variant="caption" aria-label="预览位置">{navigation.index + 1} / {navigation.total}</Typography>
+            <Button size="small" sx={{ borderRadius: '999px', color: 'text.primary' }} aria-label="下一个文件" disabled={navBlocked || !navigation.onNext} onClick={navigation.onNext}>下一个</Button>
           </>}
-          {isEditing && <Typography variant="caption" color="text.secondary">Finish editing before navigating.</Typography>}
+          {isEditing && <Typography variant="caption" color="text.secondary">请先完成编辑再切换。</Typography>}
         </Box>}
-        {(navigation?.busy || navigation?.error) && <Typography role="status" variant="body2" sx={{ mb: 1 }}>{navigation.busy ? 'Looking for the next previewable file...' : navigation.error}</Typography>}
+        {(navigation?.busy || navigation?.error) && <Typography role="status" variant="body2" sx={{ mb: 1 }}>{navigation.busy ? '正在查找下一个可预览的文件...' : navigation.error}</Typography>}
         {isLoading && (
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
             <CircularProgress size={40} thickness={4} />
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Fetching content...</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>正在获取内容...</Typography>
           </Box>
         )}
 
@@ -402,7 +402,7 @@ export default function ObjectPreviewDialog({
         )}
 
         {!isLoading && isText && textIdentity && !textIdentity.etag && (
-          <Alert severity="warning">This provider did not return an ETag. Download or copy the text to edit it safely.</Alert>
+          <Alert severity="warning">此服务商未返回 ETag。请下载或复制文本后再安全编辑。</Alert>
         )}
 
         {!isLoading && (!error || textIdentity) && (
@@ -415,7 +415,7 @@ export default function ObjectPreviewDialog({
                     src={presignedUrl} 
                     style={{ width: '100%', height: '100%', maxHeight: 'calc(80vh - 120px)' }}
                  >
-                    Your browser does not support the video tag.
+                    你的浏览器不支持 video 标签。
                  </video>
               </Box>
             )}
@@ -424,7 +424,7 @@ export default function ObjectPreviewDialog({
             {isAudioFile && presignedUrl && (
               <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
                 <audio controls src={presignedUrl} style={{ width: 'min(100%, 720px)' }}>
-                  Your browser does not support the audio tag.
+                  你的浏览器不支持 audio 标签。
                 </audio>
               </Box>
             )}
@@ -435,7 +435,7 @@ export default function ObjectPreviewDialog({
                     {isPdfLoading && (
                         <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: theme.palette.background.default, zIndex: 1, gap: 2 }}>
                             <CircularProgress size={32} />
-                            <Typography variant="caption" color="text.secondary">Loading PDF...</Typography>
+                            <Typography variant="caption" color="text.secondary">正在加载 PDF...</Typography>
                         </Box>
                     )}
                     <embed 
@@ -477,7 +477,7 @@ export default function ObjectPreviewDialog({
             {!isImageFile && !isVideoFile && !isAudioFile && !isPdfFile && !isText && (
               <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
                 <Typography color="text.secondary" variant="body1" sx={{ fontWeight: 500 }}>
-                  Preview not available for this file type
+                  此文件类型无法预览
                 </Typography>
               </Box>
             )}
@@ -485,7 +485,7 @@ export default function ObjectPreviewDialog({
         )}
       </Box>
     </BaseDialog>
-    <ConfirmDialog open={!!discardAction} title="Discard unsaved changes?" message="Your edits have not been saved. Discard them or keep editing." confirmLabel="Discard changes" cancelLabel="Keep editing" isDestructive onClose={() => setDiscardAction(null)} onConfirm={() => {
+    <ConfirmDialog open={!!discardAction} title="放弃未保存的更改？" message="你的编辑尚未保存。要放弃更改还是继续编辑？" confirmLabel="放弃更改" cancelLabel="继续编辑" isDestructive onClose={() => setDiscardAction(null)} onConfirm={() => {
       const action = discardAction; setDiscardAction(null);
       if (action === 'close') closePreview();
       else { setIsEditing(false); setEditedContent(content); }

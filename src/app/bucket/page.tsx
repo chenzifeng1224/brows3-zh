@@ -1012,7 +1012,10 @@ function BucketContent() {
     const isAccessDenied = initialError.toLowerCase().includes('access') ||
                            initialError.toLowerCase().includes('denied') ||
                            initialError.toLowerCase().includes('forbidden') ||
-                           initialError.toLowerCase().includes('permission');
+                           initialError.toLowerCase().includes('permission') ||
+                           initialError.includes('权限') ||
+                           initialError.includes('拒绝') ||
+                           initialError.includes('禁止');
 
     return (
       <Box sx={{

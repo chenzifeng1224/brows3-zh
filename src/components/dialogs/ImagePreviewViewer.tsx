@@ -145,7 +145,7 @@ function ImagePreviewCanvas({ open, name, url, error, onClose, onRetry, titleId,
 
   useEffect(() => {
     if (!url || !open || loaded || imageError) return;
-    const timeout = setTimeout(() => setImageError('The image took too long to load. Try again or download it.'), 30000);
+    const timeout = setTimeout(() => setImageError('图片加载超时。请重试或下载后查看。'), 30000);
     return () => clearTimeout(timeout);
   }, [url, open, loaded, imageError]);
 
@@ -188,12 +188,12 @@ function ImagePreviewCanvas({ open, name, url, error, onClose, onRetry, titleId,
           }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: { xs: 1.5, sm: 2.5 }, py: 1, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
         <Typography id={titleId} component="h2" title={name} noWrap sx={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600 }}>{name}</Typography>
-        {onToggleSelect && <Button size="small" variant="outlined" aria-label="Select file" aria-pressed={isSelected} onClick={onToggleSelect} sx={{ borderRadius: '999px', flexShrink: 0, color: 'text.primary', bgcolor: isSelected ? 'action.selected' : 'transparent' }}>{isSelected ? 'Selected' : 'Select'}</Button>}
-        {navigable && <Typography aria-label={navigationLabel === 'image' ? 'Image position' : 'Preview position'} variant="caption" sx={{ color: 'text.secondary', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{index + 1} / {total}</Typography>}
-        <Tooltip title="Close viewer (Esc)"><IconButton aria-label="Close viewer" onClick={onClose} sx={chromeButton}><Close fontSize="small" /></IconButton></Tooltip>
+        {onToggleSelect && <Button size="small" variant="outlined" aria-label="选择文件" aria-pressed={isSelected} onClick={onToggleSelect} sx={{ borderRadius: '999px', flexShrink: 0, color: 'text.primary', bgcolor: isSelected ? 'action.selected' : 'transparent' }}>{isSelected ? '已选择' : '选择'}</Button>}
+        {navigable && <Typography aria-label={navigationLabel === 'image' ? '图片位置' : '预览位置'} variant="caption" sx={{ color: 'text.secondary', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{index + 1} / {total}</Typography>}
+        <Tooltip title="关闭查看器 (Esc)"><IconButton aria-label="关闭查看器" onClick={onClose} sx={chromeButton}><Close fontSize="small" /></IconButton></Tooltip>
       </Box>
       <Box sx={{ flex: 1, minHeight: 0, px: { xs: 1, sm: 2 }, py: 2, pb: '72px', display: 'flex' }}>
-        <Box ref={stageRef} role="region" aria-label="Image viewport" aria-describedby={helpId} tabIndex={0} autoFocus
+        <Box ref={stageRef} role="region" aria-label="图片视口" aria-describedby={helpId} tabIndex={0} autoFocus
 
           onPointerDown={event => {
             if (!ready || event.button !== 0) return;
@@ -225,43 +225,43 @@ function ImagePreviewCanvas({ open, name, url, error, onClose, onRetry, titleId,
             else fit();
           }}
           sx={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none', '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 } }}>
-          {!ready && !failure && <CircularProgress aria-label="Loading image" size={28} sx={{ color: 'text.secondary', position: 'absolute' }} />}
+          {!ready && !failure && <CircularProgress aria-label="正在加载图片" size={28} sx={{ color: 'text.secondary', position: 'absolute' }} />}
           {failure && <Box role="alert" sx={{ maxWidth: 440, p: 3, textAlign: 'center' }}>
             <BrokenImageOutlined sx={{ color: 'text.secondary', fontSize: 40, mb: 1 }} />
             <Typography sx={{ mb: 2, overflowWrap: 'anywhere' }}>{failure}</Typography>
-            <Button onClick={onRetry} variant="outlined" sx={{ minHeight: 44 }}>Try again</Button>
+            <Button onClick={onRetry} variant="outlined" sx={{ minHeight: 44 }}>重试</Button>
           </Box>}
           {url && !failure && (
             // eslint-disable-next-line @next/next/no-img-element -- Presigned object URLs are rendered directly in the desktop WebView.
             <img ref={imgRef} src={url} alt={name} draggable={false} decoding="async"
               onLoad={event => {
                 const image = event.currentTarget;
-                if (!image.naturalWidth || !image.naturalHeight) { setImageError('This image could not be decoded. Try again or download it.'); return; }
+                if (!image.naturalWidth || !image.naturalHeight) { setImageError('此图片无法解码。请重试或下载后查看。'); return; }
                 naturalRef.current = { width: image.naturalWidth, height: image.naturalHeight };
                 image.style.width = `${image.naturalWidth}px`;
                 image.style.height = `${image.naturalHeight}px`;
                 setLoaded(true); measure();
               }}
-              onError={() => setImageError('Could not load this image. Try again to refresh its link, or download it.')}
+              onError={() => setImageError('无法加载此图片。请重试以刷新链接，或下载后查看。')}
               style={{ flexShrink: 0, maxWidth: 'none', maxHeight: 'none', visibility: loaded ? 'visible' : 'hidden', userSelect: 'none', transformOrigin: 'center', borderRadius: 2 }} />
           )}
         </Box>
       </Box>
-      {(navigationBusy || navigationError) && <Typography role="status" variant="body2" sx={{ px: 2, py: 1, bgcolor: 'background.paper' }}>{navigationBusy ? 'Looking for the next previewable file...' : navigationError}</Typography>}
+      {(navigationBusy || navigationError) && <Typography role="status" variant="body2" sx={{ px: 2, py: 1, bgcolor: 'background.paper' }}>{navigationBusy ? '正在查找下一个可预览的文件...' : navigationError}</Typography>}
       {navigable && <>
-        <Tooltip title={`Previous ${navigationLabel} (Left)`}><span style={{ position: 'absolute', left: 20, top: '50%' }}><IconButton aria-label={`Previous ${navigationLabel}`} disabled={!onPrevious || navigationBusy} onClick={onPrevious} sx={{ ...chromeButton, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}><ChevronLeft fontSize="small" /></IconButton></span></Tooltip>
-        <Tooltip title={`Next ${navigationLabel} (Right)`}><span style={{ position: 'absolute', right: 20, top: '50%' }}><IconButton aria-label={`Next ${navigationLabel}`} disabled={!onNext || navigationBusy} onClick={onNext} sx={{ ...chromeButton, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}><ChevronRight fontSize="small" /></IconButton></span></Tooltip>
+        <Tooltip title={`${navigationLabel === 'image' ? '上一张图片' : '上一个文件'} (←)`}><span style={{ position: 'absolute', left: 20, top: '50%' }}><IconButton aria-label={navigationLabel === 'image' ? '上一张图片' : '上一个文件'} disabled={!onPrevious || navigationBusy} onClick={onPrevious} sx={{ ...chromeButton, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}><ChevronLeft fontSize="small" /></IconButton></span></Tooltip>
+        <Tooltip title={`${navigationLabel === 'image' ? '下一张图片' : '下一个文件'} (→)`}><span style={{ position: 'absolute', right: 20, top: '50%' }}><IconButton aria-label={navigationLabel === 'image' ? '下一张图片' : '下一个文件'} disabled={!onNext || navigationBusy} onClick={onNext} sx={{ ...chromeButton, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}><ChevronRight fontSize="small" /></IconButton></span></Tooltip>
       </>}
       <Typography id={helpId} sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}>
-        {navigable ? 'Left and Right switch previews. Shift plus arrow keys pans the image.' : 'Arrow keys pan the image.'} {onToggleSelect ? 'Space toggles file selection.' : ''} Scroll or pinch to zoom. Drag to pan. Plus and minus zoom, 0 fits the image, 1 shows actual size. Escape closes.
+        {navigable ? '左右方向键切换预览。Shift 加方向键平移图片。' : '方向键平移图片。'} {onToggleSelect ? '空格键切换文件选择。' : ''} 滚动或捏合缩放。拖动平移。加减号缩放，0 适应图片，1 显示实际大小。Esc 关闭。
       </Typography>
-      {ready && <Box role="group" aria-label="Image zoom controls" sx={{ position: 'absolute', bottom: 'max(20px, env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: .25, p: .5, borderRadius: '999px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', whiteSpace: 'nowrap', zIndex: 1 }}>
-        <Tooltip title="Zoom out (-)"><span><IconButton aria-label="Zoom out" disabled={zoom <= minimum + 1e-8} onClick={() => zoomTo(transformRef.current.zoom / IMAGE_ZOOM_STEP)} sx={chromeButton}><ZoomOut fontSize="small" /></IconButton></span></Tooltip>
-        <Typography component="output" aria-label="Zoom level" aria-live="polite" sx={{ minWidth: 46, textAlign: 'center', color: 'text.primary', fontWeight: 600, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{zoom * 100 < 1 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Typography>
-        <Tooltip title="Zoom in (+)"><span><IconButton aria-label="Zoom in" disabled={zoom >= MAX_IMAGE_ZOOM} onClick={() => zoomTo(transformRef.current.zoom * IMAGE_ZOOM_STEP)} sx={chromeButton}><ZoomIn fontSize="small" /></IconButton></span></Tooltip>
+      {ready && <Box role="group" aria-label="图片缩放控件" sx={{ position: 'absolute', bottom: 'max(20px, env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: .25, p: .5, borderRadius: '999px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', whiteSpace: 'nowrap', zIndex: 1 }}>
+        <Tooltip title="缩小 (-)"><span><IconButton aria-label="缩小" disabled={zoom <= minimum + 1e-8} onClick={() => zoomTo(transformRef.current.zoom / IMAGE_ZOOM_STEP)} sx={chromeButton}><ZoomOut fontSize="small" /></IconButton></span></Tooltip>
+        <Typography component="output" aria-label="缩放比例" aria-live="polite" sx={{ minWidth: 46, textAlign: 'center', color: 'text.primary', fontWeight: 600, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{zoom * 100 < 1 ? (zoom * 100).toFixed(1) : Math.round(zoom * 100)}%</Typography>
+        <Tooltip title="放大 (+)"><span><IconButton aria-label="放大" disabled={zoom >= MAX_IMAGE_ZOOM} onClick={() => zoomTo(transformRef.current.zoom * IMAGE_ZOOM_STEP)} sx={chromeButton}><ZoomIn fontSize="small" /></IconButton></span></Tooltip>
         <Divider orientation="vertical" flexItem sx={{ mx: .5, my: 1 }} />
-        <Tooltip title="Fit to screen (0)"><Button aria-label="Fit to screen" aria-pressed={isFitted} onClick={fit} startIcon={<FitScreen fontSize="small" />} sx={{ minWidth: 56, height: 32, borderRadius: '999px', px: 1, '@media (pointer: coarse)': { height: 44 }, color: 'text.primary', bgcolor: isFitted ? 'action.selected' : 'transparent', '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main' } }}>Fit</Button></Tooltip>
-        <Tooltip title="Actual size, 100% (1)"><Button aria-label="Actual size" aria-pressed={!isFitted && Math.abs(zoom - 1) < 1e-8} onClick={actualSize} sx={{ minWidth: 36, height: 32, borderRadius: '999px', px: 1, '@media (pointer: coarse)': { minWidth: 44, height: 44 }, color: 'text.primary', bgcolor: !isFitted && Math.abs(zoom - 1) < 1e-8 ? 'action.selected' : 'transparent', '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main' } }}>1:1</Button></Tooltip>
+        <Tooltip title="适应屏幕 (0)"><Button aria-label="适应屏幕" aria-pressed={isFitted} onClick={fit} startIcon={<FitScreen fontSize="small" />} sx={{ minWidth: 56, height: 32, borderRadius: '999px', px: 1, '@media (pointer: coarse)': { height: 44 }, color: 'text.primary', bgcolor: isFitted ? 'action.selected' : 'transparent', '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main' } }}>适应</Button></Tooltip>
+        <Tooltip title="实际大小 100% (1)"><Button aria-label="实际大小" aria-pressed={!isFitted && Math.abs(zoom - 1) < 1e-8} onClick={actualSize} sx={{ minWidth: 36, height: 32, borderRadius: '999px', px: 1, '@media (pointer: coarse)': { minWidth: 44, height: 44 }, color: 'text.primary', bgcolor: !isFitted && Math.abs(zoom - 1) < 1e-8 ? 'action.selected' : 'transparent', '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main' } }}>1:1</Button></Tooltip>
       </Box>}
     </Box>
   );

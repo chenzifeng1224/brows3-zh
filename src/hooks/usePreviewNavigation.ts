@@ -41,7 +41,7 @@ export function usePreviewNavigation({ objects, field, direction, context, objec
         for (let pageNumber = 0; more && pageNumber < 20; pageNumber++) {
           const page = await loadMore();
           if (!current()) return;
-          if (!page) { report('Could not load more files. Retry Next or refresh the folder.'); return; }
+          if (!page) { report('无法加载更多文件。请重试“下一个”或刷新文件夹。'); return; }
           accumulated = [...accumulated, ...page.objects.filter(o => !query || o.key.toLowerCase().includes(query.toLowerCase()))];
           list = previewObjects(accumulated, field, direction);
           position = list.findIndex(o => o.key === objectKey);
@@ -49,11 +49,11 @@ export function usePreviewNavigation({ objects, field, direction, context, objec
           more = !!page.next_continuation_token;
           if (position < list.length - 1) break;
           if (page.next_continuation_token) {
-            if (cursors.has(page.next_continuation_token)) { report('Listing repeated its cursor. Refresh the folder.'); return; }
+            if (cursors.has(page.next_continuation_token)) { report('列表返回了重复的游标。请刷新文件夹。'); return; }
             cursors.add(page.next_continuation_token);
           }
         }
-        if (position === list.length - 1 && more) { report('No previewable file in the next 20 pages. Choose Next to continue searching.'); return; }
+        if (position === list.length - 1 && more) { report('接下来的 20 页中没有可预览的文件。请选择“下一个”继续查找。'); return; }
       }
       const target = list[position + (step === 'prev' ? -1 : 1)];
       if (current() && target) onNavigate(target);

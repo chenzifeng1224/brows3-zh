@@ -11,25 +11,25 @@ pub fn validate_content_type(value: &str) -> Result<String> {
     let value = value.trim();
     if value.is_empty() {
         return Err(AppError::ConfigError(
-            "Content-Type cannot be empty".to_string(),
+            "Content-Type 不能为空".to_string(),
         ));
     }
     if value.len() > 255 {
         return Err(AppError::ConfigError(
-            "Content-Type cannot exceed 255 characters".to_string(),
+            "Content-Type 不能超过 255 个字符".to_string(),
         ));
     }
 
     let parsed = value.parse::<mime::Mime>().map_err(|_| {
         AppError::ConfigError(format!(
-            "Invalid Content-Type '{}'. Use a media type such as text/html or application/json.",
+            "Content-Type '{}' 无效。请使用 text/html 或 application/json 之类的媒体类型。",
             value
         ))
     })?;
 
     if parsed.type_() == mime::STAR || parsed.subtype() == mime::STAR {
         return Err(AppError::ConfigError(
-            "Content-Type cannot contain a wildcard".to_string(),
+            "Content-Type 不能包含通配符".to_string(),
         ));
     }
 

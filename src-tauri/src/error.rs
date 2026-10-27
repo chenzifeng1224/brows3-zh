@@ -3,36 +3,36 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Deserialize)]
 pub enum AppError {
-    #[error("Profile not found: {0}")]
+    #[error("未找到配置：{0}")]
     ProfileNotFound(String),
 
-    #[error("Profile already exists: {0}")]
+    #[error("配置已存在：{0}")]
     ProfileExists(String),
 
-    #[error("Invalid credentials: {0}")]
+    #[error("凭据无效：{0}")]
     InvalidCredentials(String),
 
-    #[error("Connection failed: {0}")]
+    #[error("连接失败：{0}")]
     ConnectionFailed(String),
 
-    #[error("S3 error: {0}")]
+    #[error("S3 错误：{0}")]
     S3Error(String),
-    #[error("Access Denied: {0}")]
+    #[error("访问被拒绝 (Access Denied)：{0}")]
     AccessDenied(String),
 
-    #[error("Keychain error: {0}")]
+    #[error("钥匙串错误：{0}")]
     KeychainError(String),
 
-    #[error("IO error: {0}")]
+    #[error("IO 错误：{0}")]
     IoError(String),
 
-    #[error("Serialization error: {0}")]
+    #[error("序列化错误：{0}")]
     SerializationError(String),
 
-    #[error("Configuration error: {0}")]
+    #[error("配置错误：{0}")]
     ConfigError(String),
 
-    #[error("Invalid content: {0}")]
+    #[error("内容无效：{0}")]
     InvalidContent(String),
 }
 
@@ -78,6 +78,6 @@ mod tests {
         let value = serde_json::to_value(AppError::S3Error("PutObject failed".to_string()))
             .expect("AppError should serialize");
 
-        assert_eq!(value, "S3 error: PutObject failed");
+        assert_eq!(value, "S3 错误：PutObject failed");
     }
 }

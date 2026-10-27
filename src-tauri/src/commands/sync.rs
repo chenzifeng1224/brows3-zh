@@ -53,7 +53,7 @@ async fn selected(state: &ProfileState, expected: &str) -> Result<crate::credent
         .await
         .get_active_profile()
         .await?
-        .ok_or_else(|| AppError::ConfigError("Select a profile".into()))?;
+        .ok_or_else(|| AppError::ConfigError("请选择配置".into()))?;
     super::operations::validate_operation_profile(Some(expected), &profile.id)?;
     Ok(profile)
 }
@@ -76,7 +76,7 @@ pub async fn preview_folder_sync(
     let profile = selected(profile_state.inner(), &expected_profile_id).await?;
     if !prefix.is_empty() && !prefix.ends_with('/') {
         return Err(AppError::ConfigError(
-            "Sync destination must be a folder prefix".into(),
+            "同步目标必须是一个文件夹前缀".into(),
         ));
     }
     let prefix_copy = prefix.clone();
@@ -99,7 +99,7 @@ pub async fn preview_folder_sync(
     let current = selected(profile_state.inner(), &expected_profile_id).await?;
     if current.cache_identity() != profile.cache_identity() {
         return Err(AppError::ConfigError(
-            "Profile settings changed during preview. Preview again.".into(),
+            "预览期间配置设置已更改，请重新预览。".into(),
         ));
     }
     for file in &mut uploads {
@@ -173,7 +173,7 @@ pub(crate) async fn compare_options(
             if !filters.accepts(
                 file.key
                     .strip_prefix(prefix)
-                    .ok_or_else(|| AppError::ConfigError("File outside sync prefix".into()))?,
+                    .ok_or_else(|| AppError::ConfigError("文件不在同步前缀范围内".into()))?,
             ) {
                 preview.filtered_files += 1;
                 preview.entries.push(Entry {
@@ -199,10 +199,10 @@ pub(crate) async fn compare_options(
                     .key(&file.key)
                     .send()
                     .await
-                    .map_err(|e| AppError::S3Error(format!("Cannot compare {}: {e}", file.key)))?;
+                    .map_err(|e| AppError::S3Error(format!("无法比对 {}：{e}", file.key)))?;
                 let etag = head.e_tag().filter(|e| !e.is_empty()).ok_or_else(|| {
                     AppError::S3Error(
-                        "Destination has no ETag; safe replacement is unavailable".into(),
+                        "目标没有 ETag，无法安全替换".into(),
                     )
                 })?;
                 file.source.expected_etag = Some(etag.into());
@@ -241,7 +241,7 @@ pub(crate) async fn compare_options(
         Ok::<(), AppError>(())
     })
     .await
-    .map_err(|_| AppError::S3Error("Comparison timed out. Choose a smaller folder.".into()))??;
+    .map_err(|_| AppError::S3Error("比对超时，请选择更小的文件夹。".into()))??;
     preview.remote_only_files = remote
         .values()
         .filter(|o| !o.key().unwrap_or("").ends_with('/'))
@@ -278,7 +278,7 @@ pub async fn start_folder_sync(
                 file.source.root.join(&file.source.relative),
                 file.source.size,
             )
-            .with_group(plan_id.clone(), "Folder sync".into());
+            .with_group(plan_id.clone(), "文件夹同步".into());
             job.sync_source = Some(file.source);
             job
         })
@@ -291,7 +291,7 @@ pub async fn start_folder_sync(
         if let Some(job) = transfer_state.get_job(&id).await {
             if let crate::transfer::TransferStatus::Failed(error) = job.status {
                 return Err(AppError::IoError(format!(
-                    "Sync could not be queued: {error}"
+                    "同步无法加入队列：{error}"
                 )));
             }
         }
@@ -312,16 +312,16 @@ fn take_plan(
     replace_existing: bool,
 ) -> Result<Plan> {
     let plan = plans.get(plan_id).ok_or_else(|| {
-        AppError::ConfigError("Preview expired or was already used. Preview again.".into())
+        AppError::ConfigError("预览已过期或已被使用，请重新预览。".into())
     })?;
     if plan.profile != expected_profile_id || plan.created.elapsed() >= Duration::from_secs(900) {
         return Err(AppError::ConfigError(
-            "Profile changed or preview expired. Preview again.".into(),
+            "配置已更改或预览已过期，请重新预览。".into(),
         ));
     }
     if !replace_existing && (plan.preview.changed_files + plan.preview.unverified_files > 0) {
         return Err(AppError::ConfigError(
-            "Confirm replacement of existing objects before syncing.".into(),
+            "同步前请先确认替换已存在的对象。".into(),
         ));
     }
     Ok(plans.remove(plan_id).unwrap())

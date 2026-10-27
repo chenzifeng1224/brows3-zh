@@ -202,7 +202,7 @@ export function useObjects(
        setHasMore(!!result.next_continuation_token);
        if (result.next_continuation_token === requestToken) {
          setContinuationToken(null); setHasMore(false);
-         throw new Error('Listing repeated its cursor. Refresh the folder before continuing.');
+         throw new Error('列表返回了重复的游标。请刷新文件夹后再继续。');
        }
        return result;
     } catch (err) {

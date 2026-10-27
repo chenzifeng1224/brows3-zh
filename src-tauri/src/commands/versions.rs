@@ -21,7 +21,7 @@ async fn selected(profiles: &ProfileState, expected: &str) -> Result<Profile> {
         .await
         .get_active_profile()
         .await?
-        .ok_or_else(|| AppError::ConfigError("Select a profile.".into()))?;
+        .ok_or_else(|| AppError::ConfigError("请选择配置。".into()))?;
     super::operations::validate_operation_profile(Some(expected), &profile.id)?;
     Ok(profile)
 }
@@ -58,14 +58,14 @@ pub async fn list_object_versions(
         })
     })
     .await
-    .map_err(|_| AppError::S3Error("Loading history timed out. Try again.".into()))??;
+    .map_err(|_| AppError::S3Error("加载历史记录超时，请重试。".into()))??;
     if selected(profile_state.inner(), &expected_profile_id)
         .await?
         .cache_identity()
         != profile.cache_identity()
     {
         return Err(AppError::ConfigError(
-            "Profile settings changed. Load history again.".into(),
+            "配置设置已更改，请重新加载历史记录。".into(),
         ));
     }
     Ok(result)
@@ -86,7 +86,7 @@ pub(crate) async fn prepare_restore(
         || version_id == expected_current_version
     {
         return Err(AppError::ConfigError(
-            "Select an older data version and confirm the restore.".into(),
+            "请选择一个较早的数据版本并确认恢复。".into(),
         ));
     }
     tokio::time::timeout(Duration::from_secs(60), async {
@@ -94,13 +94,13 @@ pub(crate) async fn prepare_restore(
         let guard = RestoreGuard { current_version: expected_current_version.into(), current_etag: latest.etag, deleted: latest.is_delete_marker };
         versions::validate_restore(client, bucket, key, &guard).await?;
         let head = client.head_object().bucket(bucket).key(key).version_id(version_id).send().await
-            .map_err(|e| AppError::S3Error(format!("Cannot restore this version. Delete markers, archived or inaccessible versions cannot be read: {}", DisplayErrorContext(&e))))?;
+            .map_err(|e| AppError::S3Error(format!("无法恢复此版本。删除标记、已归档或无权访问的版本无法读取：{}", DisplayErrorContext(&e))))?;
         if head.delete_marker().unwrap_or(false) || head.version_id() != Some(version_id) {
-            return Err(AppError::S3Error("Provider did not return the selected data version.".into()));
+            return Err(AppError::S3Error("服务商未返回所选的数据版本。".into()));
         }
         let (etag, size) = remote::validate_head(&head)?;
         Ok((guard, etag, size))
-    }).await.map_err(|_| AppError::S3Error("Restore preparation timed out; nothing was queued.".into()))?
+    }).await.map_err(|_| AppError::S3Error("恢复准备超时，未加入任何任务。".into()))?
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -135,7 +135,7 @@ pub async fn restore_object_version(
         != profile.cache_identity()
     {
         return Err(AppError::ConfigError(
-            "Profile settings changed. Refresh history and confirm again.".into(),
+            "配置设置已更改，请刷新历史记录并重新确认。".into(),
         ));
     }
     let mut job = TransferJob::new(
@@ -147,7 +147,7 @@ pub async fn restore_object_version(
         PathBuf::new(),
         size * 2,
     )
-    .with_group(uuid::Uuid::new_v4().to_string(), "Version restore".into());
+    .with_group(uuid::Uuid::new_v4().to_string(), "版本恢复".into());
     job.remote_source = Some(RemoteSource {
         profile_id: profile.id.clone(),
         profile_identity: profile.cache_identity(),

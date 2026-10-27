@@ -21,7 +21,7 @@ pub async fn list_recursive(client: &Client, bucket: &str, prefix: &str) -> Resu
             objects.extend_from_slice(page.contents());
             if objects.len() > 100_000 {
                 return Err(AppError::ConfigError(
-                    "Folder exceeds 100,000 objects. Select a smaller prefix.".into(),
+                    "文件夹超过 100,000 个对象，请选择更小的前缀。".into(),
                 ));
             }
             if !page.is_truncated().unwrap_or(false) {
@@ -31,22 +31,22 @@ pub async fn list_recursive(client: &Client, bucket: &str, prefix: &str) -> Resu
                 .next_continuation_token()
                 .filter(|value| !value.is_empty())
                 .ok_or_else(|| {
-                    AppError::S3Error("Incomplete listing: missing continuation token".into())
+                    AppError::S3Error("列表不完整：缺少 continuation token".into())
                 })?;
             if !seen.insert(next.to_string()) {
                 return Err(AppError::S3Error(
-                    "Incomplete listing: repeated continuation token".into(),
+                    "列表不完整：continuation token 重复".into(),
                 ));
             }
             token = Some(next.to_string());
         }
         Err(AppError::ConfigError(
-            "Folder exceeds 100 listing pages. Select a smaller prefix.".into(),
+            "文件夹的列表结果超过 100 页，请选择更小的前缀。".into(),
         ))
     })
     .await
     .map_err(|_| {
-        AppError::S3Error("Folder listing timed out; nothing was queued or changed.".into())
+        AppError::S3Error("文件夹列表超时；未加入任何任务，也未做任何修改。".into())
     })?
 }
 

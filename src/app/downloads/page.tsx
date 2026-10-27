@@ -449,7 +449,7 @@ function GroupRow({ group }: { group: TransferGroupRow }) {
                 <TableCell component="th" scope="row">
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                          <IconButton
-                            aria-label="expand row"
+                            aria-label="展开行"
                             size="small"
                             onClick={(e) => {
                                 e.stopPropagation();

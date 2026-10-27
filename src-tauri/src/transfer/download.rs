@@ -25,7 +25,7 @@ impl DownloadDestination {
         {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Invalid download destination",
+                "下载目标无效",
             ));
         }
         Ok(Self {
@@ -40,10 +40,10 @@ impl DownloadDestination {
             .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
             .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidInput, "Choose a download directory")
+                io::Error::new(io::ErrorKind::InvalidInput, "请选择下载目录")
             })?;
         let name = path.file_name().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidInput, "Choose a download filename")
+            io::Error::new(io::ErrorKind::InvalidInput, "请选择下载文件名")
         })?;
         Self::new(Self::open_root(parent)?, PathBuf::from(name), overwrite)
     }
@@ -60,13 +60,13 @@ impl DownloadDestination {
             .relative_path
             .file_name()
             .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidInput, "Choose a download filename")
+                io::Error::new(io::ErrorKind::InvalidInput, "请选择下载文件名")
             })?
             .to_os_string();
         if !self.overwrite && parent.symlink_metadata(&final_name).is_ok() {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
-                "The download destination already exists",
+                "下载目标已存在",
             ));
         }
         let temporary_name = format!(".brows3-{}.part", uuid::Uuid::new_v4());
@@ -97,7 +97,7 @@ impl PendingDownload {
         let file = self
             .file
             .as_mut()
-            .ok_or_else(|| io::Error::other("Download is closed"))?;
+            .ok_or_else(|| io::Error::other("下载已关闭"))?;
         file.write_all(bytes).await
     }
 
@@ -105,7 +105,7 @@ impl PendingDownload {
         let file = self
             .file
             .as_mut()
-            .ok_or_else(|| io::Error::other("Download is closed"))?;
+            .ok_or_else(|| io::Error::other("下载已关闭"))?;
         file.flush().await?;
         file.sync_all().await?;
         self.file.take();
@@ -114,7 +114,7 @@ impl PendingDownload {
 
     pub fn commit(self) -> io::Result<()> {
         if self.file.is_some() {
-            return Err(io::Error::other("Download has not finished writing"));
+            return Err(io::Error::other("下载尚未写完"));
         }
         if self.overwrite {
             self.parent

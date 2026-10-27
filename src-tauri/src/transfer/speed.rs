@@ -41,7 +41,7 @@ impl Body for TrackedBody {
         if self.progress.lock().unwrap().cancelled {
             return Poll::Ready(Some(Err(std::io::Error::new(
                 std::io::ErrorKind::Interrupted,
-                "Transfer cancelled",
+                "传输已取消",
             )
             .into())));
         }

@@ -17,7 +17,7 @@ async fn profile(state: &ProfileState, expected: &str) -> Result<crate::credenti
         .await
         .get_active_profile()
         .await?
-        .ok_or_else(|| AppError::ConfigError("Choose a connection.".into()))?;
+        .ok_or_else(|| AppError::ConfigError("请选择一个连接。".into()))?;
     super::operations::validate_operation_profile(Some(expected), &p.id)?;
     Ok(p)
 }
@@ -36,14 +36,14 @@ pub async fn get_public_urls(
         || keys.iter().any(|key| key.is_empty() || key.ends_with('/'))
     {
         return Err(AppError::ConfigError(
-            "Select between 1 and 10,000 files.".into(),
+            "请选择 1 到 10,000 个文件。".into(),
         ));
     }
     let p = profile(profile_state.inner(), &expected_profile_id).await?;
     let overrides = overrides.unwrap_or_default();
     if overrides.len() > keys.len() || overrides.keys().any(|k| !keys.contains(k)) {
         return Err(AppError::ConfigError(
-            "URL overrides must match selected files.".into(),
+            "URL 覆盖项必须与所选文件对应。".into(),
         ));
     }
     keys.iter()
@@ -73,10 +73,10 @@ pub async fn check_public_url(
     let response =
         crate::transfer::web::request(&url, reqwest::Method::HEAD, Default::default()).await?;
     Ok(if response.status().is_success() {
-        "Anonymous HEAD request succeeded. Access may differ for other users or change later."
+        "匿名 HEAD 请求成功。其他用户或之后访问的结果可能不同。"
             .into()
     } else {
-        format!("Anonymous HEAD returned HTTP {}. Access is not confirmed; some hosts do not support HEAD.", response.status().as_u16())
+        format!("匿名 HEAD 请求返回 HTTP {}。无法确认访问结果；部分主机不支持 HEAD 请求。", response.status().as_u16())
     })
 }
 
@@ -95,11 +95,11 @@ pub async fn queue_url_imports(
 ) -> Result<usize> {
     if entries.is_empty() || entries.len() > MAX_BATCH {
         return Err(AppError::ConfigError(format!(
-            "Import between 1 and {MAX_BATCH} URLs at a time."
+            "每次可导入 1 到 {MAX_BATCH} 个 URL。"
         )));
     }
     if bucket.is_empty() || (!prefix.is_empty() && !prefix.ends_with('/')) {
-        return Err(AppError::ConfigError("Invalid destination folder.".into()));
+        return Err(AppError::ConfigError("目标文件夹无效。".into()));
     }
     let mut keys = HashSet::new();
     let mut input_size = 0usize;
@@ -108,7 +108,7 @@ pub async fn queue_url_imports(
         let key = format!("{prefix}{}", entry.path);
         if key.len() > 1024 || !keys.insert(key) {
             return Err(AppError::ConfigError(
-                "Destination keys must be unique and at most 1,024 bytes.".into(),
+                "目标键必须唯一且不超过 1,024 字节。".into(),
             ));
         }
         input_size += entry.url.len()
@@ -121,7 +121,7 @@ pub async fn queue_url_imports(
     }
     if input_size > 2 * 1024 * 1024 {
         return Err(AppError::ConfigError(
-            "Import configuration exceeds 2 MiB.".into(),
+            "导入配置超过 2 MiB。".into(),
         ));
     }
     let p = profile(profile_state.inner(), &expected_profile_id).await?;
@@ -140,14 +140,14 @@ pub async fn queue_url_imports(
             // Snapshot replacement approval before any source downloads or S3 writes.
             let expected_etag = if entry.replace {
                 match tokio::time::timeout(Duration::from_secs(30), client.head_object().bucket(&bucket).key(&key).send()).await
-                    .map_err(|_| AppError::S3Error("Destination check timed out. No imports were queued.".into()))? {
-                    Ok(head) => Some(head.e_tag().filter(|v| !v.is_empty()).ok_or_else(|| AppError::ConfigError("Destination has no ETag; safe replacement is unavailable.".into()))?.to_owned()),
+                    .map_err(|_| AppError::S3Error("目标检查超时，未加入任何导入任务。".into()))? {
+                    Ok(head) => Some(head.e_tag().filter(|v| !v.is_empty()).ok_or_else(|| AppError::ConfigError("目标没有 ETag，无法安全替换。".into()))?.to_owned()),
                     Err(e) if e.raw_response().is_some_and(|r| r.status().as_u16() == 404) => None,
-                    Err(_) => return Err(AppError::S3Error("Cannot verify a replacement destination. Check S3 permissions; no imports were queued.".into())),
+                    Err(_) => return Err(AppError::S3Error("无法验证替换目标。请检查 S3 权限；未加入任何导入任务。".into())),
                 }
             } else { None };
             let mut job = TransferJob::new(TransferType::Upload, p.id.clone(), bucket.clone(), region, key, Default::default(), 0)
-                .with_group(group, format!("URL import to s3://{bucket}/{prefix}"));
+                .with_group(group, format!("URL 导入至 s3://{bucket}/{prefix}"));
             job.url_import = Some(UrlSource { max_attempts: entry.max_attempts, url: entry.url, headers: entry.headers, max_bytes: entry.max_bytes, sha256: entry.sha256, expected_etag, profile_identity: p.cache_identity() });
             Ok::<_, AppError>(job)
         }
@@ -155,12 +155,12 @@ pub async fn queue_url_imports(
     let jobs = tokio::time::timeout(Duration::from_secs(120), queued)
         .await
         .map_err(|_| {
-            AppError::S3Error("Destination checks timed out. No imports were queued.".into())
+            AppError::S3Error("目标检查超时，未加入任何导入任务。".into())
         })??;
     let current = profile(profile_state.inner(), &expected_profile_id).await?;
     if current.cache_identity() != p.cache_identity() {
         return Err(AppError::ConfigError(
-            "Connection changed. Review the import again.".into(),
+            "连接已更改，请重新检查导入设置。".into(),
         ));
     }
     let count = jobs.len();

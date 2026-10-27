@@ -36,13 +36,13 @@ interface PresignedUrlDialogProps {
 
 // Preset expiry options
 const EXPIRY_OPTIONS = [
-  { label: '15 minutes', value: 900 },
-  { label: '1 hour', value: 3600 },
-  { label: '6 hours', value: 21600 },
-  { label: '12 hours', value: 43200 },
-  { label: '24 hours', value: 86400 },
-  { label: '7 days', value: 604800 },
-  { label: 'Custom', value: -1 },
+  { label: '15 分钟', value: 900 },
+  { label: '1 小时', value: 3600 },
+  { label: '6 小时', value: 21600 },
+  { label: '12 小时', value: 43200 },
+  { label: '24 小时', value: 86400 },
+  { label: '7 天', value: 604800 },
+  { label: '自定义', value: -1 },
 ];
 
 export default function PresignedUrlDialog({
@@ -79,10 +79,10 @@ export default function PresignedUrlDialog({
 
   // Format expiry for display
   const formatExpiry = (seconds: number): string => {
-    if (seconds < 60) return `${seconds} seconds`;
-    if (seconds < 3600) return `${Math.round(seconds / 60)} minutes`;
-    if (seconds < 86400) return `${Math.round(seconds / 3600)} hours`;
-    return `${Math.round(seconds / 86400)} days`;
+    if (seconds < 60) return `${seconds} 秒`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)} 分钟`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)} 小时`;
+    return `${Math.round(seconds / 86400)} 天`;
   };
 
   // Reset state when dialog opens
@@ -112,13 +112,13 @@ export default function PresignedUrlDialog({
     const expirySeconds = getExpirySeconds();
     
     if (expirySeconds <= 0) {
-      setError('Expiry time must be greater than 0');
+      setError('有效期必须大于 0');
       return;
     }
     
     // AWS max is 7 days (604800 seconds) for most credential types
     if (expirySeconds > 604800) {
-      setError('Expiry cannot exceed 7 days (604800 seconds) for most AWS credential types');
+      setError('对大多数 AWS 凭证类型，有效期不能超过 7 天（604800 秒）');
       return;
     }
 
@@ -137,7 +137,7 @@ export default function PresignedUrlDialog({
     } catch (err) {
       if (requestId === generateRequestIdRef.current) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        setError(`Failed to generate URL: ${errMsg}`);
+        setError(`生成 URL 失败：${errMsg}`);
       }
     } finally {
       if (requestId === generateRequestIdRef.current) {
@@ -159,7 +159,7 @@ export default function PresignedUrlDialog({
         copiedTimeoutRef.current = null;
       }, 2000);
     } catch {
-      setError('Failed to copy to clipboard');
+      setError('复制到剪贴板失败');
     }
   };
 
@@ -169,11 +169,11 @@ export default function PresignedUrlDialog({
     <BaseDialog
       open={open}
       onClose={onClose}
-      title="Generate Presigned URL"
+      title="生成预签名 URL"
       maxWidth="sm"
       actions={
         <>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>关闭</Button>
           {!generatedUrl && (
             <Button
               onClick={handleGenerate}
@@ -181,7 +181,7 @@ export default function PresignedUrlDialog({
               disabled={isGenerating || (selectedExpiry === -1 && !customExpiry)}
               startIcon={<LinkIcon />}
             >
-              {isGenerating ? 'Generating...' : 'Generate URL'}
+              {isGenerating ? '生成中...' : '生成 URL'}
             </Button>
           )}
         </>
@@ -189,7 +189,7 @@ export default function PresignedUrlDialog({
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <Typography variant="body2" color="text.secondary">
-          Generate a temporary URL that allows anyone with the link to access{' '}
+          生成一个临时 URL，任何持有该链接的人都可以访问{' '}
           <Box component="span" sx={{ fontWeight: 700, fontFamily: 'monospace', bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5 }}>
             {fileName}
           </Box>
@@ -199,11 +199,11 @@ export default function PresignedUrlDialog({
           <>
             {/* Expiry Selection */}
             <FormControl fullWidth>
-              <InputLabel id="expiry-label">URL Expires In</InputLabel>
+              <InputLabel id="expiry-label">URL 有效期</InputLabel>
               <Select
                 labelId="expiry-label"
                 value={selectedExpiry}
-                label="URL Expires In"
+                label="URL 有效期"
                 onChange={(e) => setSelectedExpiry(e.target.value as number)}
               >
                 {EXPIRY_OPTIONS.map((opt) => (
@@ -218,7 +218,7 @@ export default function PresignedUrlDialog({
             {selectedExpiry === -1 && (
               <Stack direction="row" spacing={2}>
                 <TextField
-                  label="Custom Duration"
+                  label="自定义时长"
                   type="number"
                   value={customExpiry}
                   onChange={(e) => setCustomExpiry(e.target.value)}
@@ -232,16 +232,16 @@ export default function PresignedUrlDialog({
                   }}
                 />
                 <FormControl sx={{ flex: 1 }}>
-                  <InputLabel>Unit</InputLabel>
+                  <InputLabel>单位</InputLabel>
                   <Select
                     value={customUnit}
-                    label="Unit"
+                    label="单位"
                     onChange={(e) => setCustomUnit(e.target.value as typeof customUnit)}
                   >
-                    <MenuItem value="seconds">Seconds</MenuItem>
-                    <MenuItem value="minutes">Minutes</MenuItem>
-                    <MenuItem value="hours">Hours</MenuItem>
-                    <MenuItem value="days">Days</MenuItem>
+                    <MenuItem value="seconds">秒</MenuItem>
+                    <MenuItem value="minutes">分钟</MenuItem>
+                    <MenuItem value="hours">小时</MenuItem>
+                    <MenuItem value="days">天</MenuItem>
                   </Select>
                 </FormControl>
               </Stack>
@@ -249,8 +249,8 @@ export default function PresignedUrlDialog({
 
             <Alert severity="info" sx={{ py: 0.5 }}>
               <Typography variant="caption">
-                The maximum expiry for presigned URLs is 7 days for most AWS credential types.
-                URLs generated with temporary credentials (STS) may have shorter limits.
+                对大多数 AWS 凭证类型，预签名 URL 的最长有效期为 7 天。
+                使用临时凭证（STS）生成的 URL 有效期可能更短。
               </Typography>
             </Alert>
           </>
@@ -272,7 +272,7 @@ export default function PresignedUrlDialog({
                   },
                 }}
               />
-              <Tooltip title={copied ? 'Copied!' : 'Copy URL'}>
+              <Tooltip title={copied ? '已复制！' : '复制 URL'}>
                 <IconButton
                   onClick={handleCopy}
                   sx={{
@@ -291,7 +291,7 @@ export default function PresignedUrlDialog({
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip
                 icon={<TimeIcon />}
-                label={`Requested lifetime: ${formatExpiry(generatedExpiry?.seconds || 0)}`}
+                label={`请求的有效期：${formatExpiry(generatedExpiry?.seconds || 0)}`}
                 size="small"
                 color="primary"
                 variant="outlined"
@@ -304,15 +304,15 @@ export default function PresignedUrlDialog({
                   setError(null);
                 }}
               >
-                Generate Another
+                再生成一个
               </Button>
             </Stack>
 
-            {generatedExpiry && <Typography variant="caption" color="text.secondary">Requested expiry: {new Date(generatedExpiry.at).toLocaleString()}. Temporary credentials can expire sooner.</Typography>}
+            {generatedExpiry && <Typography variant="caption" color="text.secondary">请求的过期时间：{new Date(generatedExpiry.at).toLocaleString()}。临时凭证可能更早过期。</Typography>}
 
             <Alert severity="warning" sx={{ py: 0.5 }}>
               <Typography variant="caption">
-                Anyone with this URL can access this object until it expires. Share carefully.
+                任何拿到此 URL 的人都能在过期前访问该对象，请谨慎分享。
               </Typography>
             </Alert>
           </>

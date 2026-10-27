@@ -112,10 +112,10 @@ pub async fn test_connection(
                 crate::credentials::CredentialType::SharedConfig { profile_name } => {
                     let name = profile_name.as_deref().unwrap_or("default");
                     format!(
-                        "Could not load credentials for AWS profile '{name}': {err}. If this is an IAM Identity Center (SSO) profile, choose Sign in with AWS SSO or run `aws sso login --profile {name}`, then retry."
+                        "无法加载 AWS 配置 '{name}' 的凭据：{err}。如果这是 IAM Identity Center (SSO) 配置，请选择“使用 AWS SSO 登录”，或运行 `aws sso login --profile {name}`，然后重试。"
                     )
                 }
-                _ => format!("Could not load AWS credentials: {err}"),
+                _ => format!("无法加载 AWS 凭据：{err}"),
             };
 
             return Ok(TestConnectionResult {
@@ -135,7 +135,7 @@ pub async fn test_connection(
             let bucket_count = response.buckets().len();
             Ok(TestConnectionResult {
                 success: true,
-                message: format!("Connected successfully! Found {} bucket(s)", bucket_count),
+                message: format!("连接成功！找到 {} 个存储桶", bucket_count),
                 region: Some(
                     profile
                         .region
@@ -153,7 +153,7 @@ pub async fn test_connection(
             if error_string.contains("dispatch failure") {
                 return Ok(TestConnectionResult {
                     success: false,
-                    message: "Connection failed: Could not reach the endpoint. Please verify the endpoint URL is correct (e.g., https://us-east-1.linodeobjects.com) and that your network can reach it.".to_string(),
+                    message: "连接失败：无法访问端点。请确认端点 URL 正确（例如 https://us-east-1.linodeobjects.com），并且网络可以访问它。".to_string(),
                     region: None,
                     bucket_count: None,
                 });
@@ -168,7 +168,7 @@ pub async fn test_connection(
             if code == "AccessDenied" || code == "403" {
                 return Ok(TestConnectionResult {
                     success: true,
-                    message: "Connected! (Note: You are authenticated, but lack permission to list all buckets. You may need to enter bucket names manually or use a direct link.)".to_string(),
+                    message: "已连接！（注意：身份验证成功，但无权列出所有存储桶。你可能需要手动输入存储桶名称或使用直接链接。）".to_string(),
                     region: Some(profile.region.clone().unwrap_or_else(|| "us-east-1".to_string())),
                     bucket_count: Some(0),
                 });
@@ -176,7 +176,7 @@ pub async fn test_connection(
 
             Ok(TestConnectionResult {
                 success: false,
-                message: format!("Connection failed: {}: {}", code, message),
+                message: format!("连接失败：{}：{}", code, message),
                 region: None,
                 bucket_count: None,
             })
@@ -270,7 +270,7 @@ fn parse_profile_file(
 }
 
 fn local_profile_files() -> Result<Vec<(PathBuf, ProfileFileKind)>, String> {
-    let home = dirs::home_dir().ok_or("Could not find home directory")?;
+    let home = dirs::home_dir().ok_or("无法找到主目录")?;
     let credentials = std::env::var_os("AWS_SHARED_CREDENTIALS_FILE")
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(".aws").join("credentials"));
@@ -372,7 +372,7 @@ fn concise_cli_error(output: &[u8]) -> String {
 pub async fn login_sso(profile_name: String) -> Result<String, String> {
     let profile_name = profile_name.trim();
     if profile_name.is_empty() {
-        return Err("AWS profile name is required".to_string());
+        return Err("请输入 AWS 配置名称".to_string());
     }
 
     let mut command = tokio::process::Command::new(aws_cli_path());
@@ -383,27 +383,27 @@ pub async fn login_sso(profile_name: String) -> Result<String, String> {
 
     let output = tokio::time::timeout(Duration::from_secs(10 * 60), command.output())
         .await
-        .map_err(|_| "AWS SSO sign-in timed out after 10 minutes".to_string())?
+        .map_err(|_| "AWS SSO 登录超时（10 分钟）".to_string())?
         .map_err(|err| {
             if err.kind() == std::io::ErrorKind::NotFound {
-                "AWS CLI v2 was not found. Install it, then run `aws sso login --profile <name>` or try this button again.".to_string()
+                "未找到 AWS CLI v2。请安装后运行 `aws sso login --profile <name>`，或再次点击此按钮。".to_string()
             } else {
-                format!("Could not start AWS CLI: {err}")
+                format!("无法启动 AWS CLI：{err}")
             }
         })?;
 
     if output.status.success() {
         Ok(format!(
-            "AWS SSO sign-in completed for profile '{profile_name}'"
+            "配置 '{profile_name}' 的 AWS SSO 登录已完成"
         ))
     } else {
         let stderr = concise_cli_error(&output.stderr);
         let stdout = concise_cli_error(&output.stdout);
         let detail = if !stderr.is_empty() { stderr } else { stdout };
         Err(if detail.is_empty() {
-            format!("AWS SSO sign-in failed with status {}", output.status)
+            format!("AWS SSO 登录失败，状态：{}", output.status)
         } else {
-            format!("AWS SSO sign-in failed: {detail}")
+            format!("AWS SSO 登录失败：{detail}")
         })
     }
 }

@@ -28,7 +28,7 @@ pub struct CopyItem {
 fn destination_key(item: &CopyItem, key: &str, prefix: &str) -> Result<String> {
     if item.key.is_empty() || (item.is_folder && !item.key.ends_with('/')) {
         return Err(AppError::ConfigError(
-            "Select files or named folders, not a bucket root.".into(),
+            "请选择文件或有名称的文件夹，不能选择存储桶根目录。".into(),
         ));
     }
     let selected = if item.is_folder {
@@ -40,26 +40,26 @@ fn destination_key(item: &CopyItem, key: &str, prefix: &str) -> Result<String> {
         .rsplit('/')
         .next()
         .filter(|n| !n.is_empty())
-        .ok_or_else(|| AppError::ConfigError("Invalid source name".into()))?;
+        .ok_or_else(|| AppError::ConfigError("源名称无效".into()))?;
     let suffix = if item.is_folder {
         format!(
             "/{rest}",
             rest = key
                 .strip_prefix(&item.key)
                 .ok_or_else(|| AppError::S3Error(
-                    "Source listing returned an unrelated key.".into()
+                    "源列表返回了不相关的键。".into()
                 ))?
         )
     } else {
         if key != item.key {
-            return Err(AppError::ConfigError("Source key mismatch".into()));
+            return Err(AppError::ConfigError("源键不匹配".into()));
         }
         String::new()
     };
     let result = format!("{prefix}{name}{suffix}");
     if result.len() > 1024 {
         return Err(AppError::ConfigError(
-            "Destination key exceeds 1,024 bytes.".into(),
+            "目标键超过 1,024 字节。".into(),
         ));
     }
     Ok(result)
@@ -85,7 +85,7 @@ pub async fn copy_between_profiles(
         || (!destination_prefix.is_empty() && !destination_prefix.ends_with('/'))
     {
         return Err(AppError::ConfigError(
-            "Choose 1 to 10,000 source items and a destination folder.".into(),
+            "请选择 1 到 10,000 个源项目以及目标文件夹。".into(),
         ));
     }
     let source_id = &items[0].profile_id;
@@ -95,7 +95,7 @@ pub async fn copy_between_profiles(
             .any(|i| i.profile_id != *source_id || i.bucket.is_empty() || i.region.is_empty())
     {
         return Err(AppError::ConfigError(
-            "Cross-profile copy needs one source profile and a different destination profile."
+            "跨配置复制需要一个源配置和另一个不同的目标配置。"
                 .into(),
         ));
     }
@@ -104,7 +104,7 @@ pub async fn copy_between_profiles(
         let active = profiles
             .get_active_profile()
             .await?
-            .ok_or_else(|| AppError::ConfigError("Select a destination profile.".into()))?;
+            .ok_or_else(|| AppError::ConfigError("请选择目标配置。".into()))?;
         super::operations::validate_operation_profile(Some(&expected_profile_id), &active.id)?;
         (profiles.get_profile(source_id).await?, active)
     };
@@ -137,7 +137,7 @@ pub async fn copy_between_profiles(
                     .into_iter()
                     .map(|o| {
                         o.key.ok_or_else(|| {
-                            AppError::S3Error("Source listing has an unnamed object.".into())
+                            AppError::S3Error("源列表中存在无名称的对象。".into())
                         })
                     })
                     .collect::<Result<Vec<_>>>()?
@@ -150,7 +150,7 @@ pub async fn copy_between_profiles(
                 if let Some(previous) = destinations.insert(target.clone(), identity.clone()) {
                     if previous != identity {
                         return Err(AppError::ConfigError(format!(
-                            "Multiple source objects map to {target}. Select them separately."
+                            "多个源对象映射到 {target}，请分别选择。"
                         )));
                     }
                     continue;
@@ -160,7 +160,7 @@ pub async fn copy_between_profiles(
                 }
                 if jobs.len() >= 10_000 {
                     return Err(AppError::ConfigError(
-                        "Copy exceeds 10,000 objects. Select a smaller folder.".into(),
+                        "复制数量超过 10,000 个对象，请选择更小的文件夹。".into(),
                     ));
                 }
                 let head = client
@@ -169,7 +169,7 @@ pub async fn copy_between_profiles(
                     .key(&key)
                     .send()
                     .await
-                    .map_err(|e| AppError::S3Error(format!("Cannot inspect source {key}: {e}")))?;
+                    .map_err(|e| AppError::S3Error(format!("无法检查源对象 {key}：{e}")))?;
                 let (etag, size) = remote::validate_head(&head)?;
                 let mut job = TransferJob::new(
                     TransferType::Upload,
@@ -182,7 +182,7 @@ pub async fn copy_between_profiles(
                 )
                 .with_group(
                     group.clone(),
-                    format!("Copy: {} to {}", source.name, destination.name),
+                    format!("复制：{} → {}", source.name, destination.name),
                 );
                 job.remote_source = Some(RemoteSource {
                     profile_id: source.id.clone(),
@@ -204,7 +204,7 @@ pub async fn copy_between_profiles(
     .await
     .map_err(|_| {
         AppError::S3Error(
-            "Copy preparation timed out; nothing was queued. Select fewer objects.".into(),
+            "复制准备超时，未加入任何任务。请减少选择的对象数量。".into(),
         )
     })??;
     {
@@ -212,12 +212,12 @@ pub async fn copy_between_profiles(
         let active = profiles
             .get_active_profile()
             .await?
-            .ok_or_else(|| AppError::ConfigError("Destination profile changed.".into()))?;
+            .ok_or_else(|| AppError::ConfigError("目标配置已更改。".into()))?;
         if active.cache_identity() != destination.cache_identity()
             || profiles.get_profile(source_id).await?.cache_identity() != source.cache_identity()
         {
             return Err(AppError::ConfigError(
-                "Profile settings changed during preparation. Copy again.".into(),
+                "准备过程中配置设置已更改，请重新复制。".into(),
             ));
         }
     }

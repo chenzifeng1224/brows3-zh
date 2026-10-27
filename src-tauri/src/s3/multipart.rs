@@ -28,12 +28,12 @@ pub struct MultipartPlan {
 pub fn plan_multipart_upload(object_size: u64) -> Result<MultipartPlan> {
     if object_size == 0 {
         return Err(AppError::ConfigError(
-            "Cannot create a multipart upload for an empty object".to_string(),
+            "无法为空对象创建分段上传".to_string(),
         ));
     }
     if object_size > MAX_OBJECT_SIZE {
         return Err(AppError::ConfigError(format!(
-            "Object size {object_size} bytes exceeds the S3 multipart object limit of {MAX_OBJECT_SIZE} bytes"
+            "对象大小 {object_size} 字节超过 S3 分段对象的 {MAX_OBJECT_SIZE} 字节上限"
         )));
     }
 
@@ -41,14 +41,14 @@ pub fn plan_multipart_upload(object_size: u64) -> Result<MultipartPlan> {
     let part_size = round_up_to_mib(DEFAULT_PART_SIZE.max(minimum_for_part_limit));
     if !(MIN_PART_SIZE..=MAX_PART_SIZE).contains(&part_size) {
         return Err(AppError::ConfigError(format!(
-            "No valid S3 multipart part size is available for an object of {object_size} bytes"
+            "对于 {object_size} 字节的对象，没有可用的合法 S3 分段大小"
         )));
     }
 
     let part_count = object_size.div_ceil(part_size);
     if part_count > MAX_PARTS {
         return Err(AppError::ConfigError(format!(
-            "Multipart upload would require {part_count} parts, exceeding the S3 limit of {MAX_PARTS}"
+            "分段上传需要 {part_count} 个分段，超过 S3 的 {MAX_PARTS} 个分段上限"
         )));
     }
 
@@ -115,12 +115,12 @@ impl MultipartUploadGuard {
         .await
         .map_err(|_| {
             AppError::S3Error(format!(
-                "Aborting multipart upload {upload_id} timed out after 60 seconds"
+                "中止分段上传 {upload_id} 超时（60 秒）"
             ))
         })?
         .map_err(|error| {
             AppError::S3Error(format!(
-                "Failed to abort multipart upload {upload_id} for s3://{}/{}: {}",
+                "中止 s3://{}/{} 的分段上传 {upload_id} 失败：{}",
                 self.bucket,
                 self.key,
                 aws_sdk_s3::error::DisplayErrorContext(&error)
@@ -197,7 +197,7 @@ mod tests {
         let error = task.await.unwrap().unwrap_err();
         tokio::time::resume();
         server.abort();
-        assert!(error.to_string().contains("timed out"));
+        assert!(error.to_string().contains("超时"));
     }
 
     #[test]

@@ -406,7 +406,7 @@ export const VirtualizedObjectTable = memo(function VirtualizedObjectTable({
         sx={{ bgcolor: 'background.default', cursor: 'pointer', fontWeight: 600 }}
         onClick={() => onSortChange('name')}
       >
-        Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+        名称 {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
       </TableCell>
       <TableCell 
         align="right"

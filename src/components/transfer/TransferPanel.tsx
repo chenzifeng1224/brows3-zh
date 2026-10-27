@@ -87,23 +87,23 @@ export function TransferPanel({ filterType }: TransferPanelProps) {
            >
              <SwapIcon fontSize="small" color={activeJobs.length > 0 ? 'primary' : 'disabled'} />
              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-               Transfers
+               传输
              </Typography>
              <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
                {activeJobs.length > 0 
-                 ? `${activeJobs.length} active` 
+                 ? `${activeJobs.length} 个进行中` 
                  : finishedJobs.length > 0 
-                   ? `${finishedJobs.length} finished`
+                   ? `${finishedJobs.length} 个已完成`
                    : ''
                }
              </Typography>
            </Box>
            
            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-             <IconButton size="small" aria-label={isPanelOpen ? 'Collapse transfers' : 'Expand transfers'} onClick={togglePanel}>
+             <IconButton size="small" aria-label={isPanelOpen ? '收起传输面板' : '展开传输面板'} onClick={togglePanel}>
                {isPanelOpen ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
              </IconButton>
-             <IconButton size="small" aria-label="Hide transfers" onClick={hidePanel}>
+             <IconButton size="small" aria-label="隐藏传输面板" onClick={hidePanel}>
                <CloseIcon fontSize="small" />
              </IconButton>
            </Box>
@@ -114,7 +114,7 @@ export function TransferPanel({ filterType }: TransferPanelProps) {
             {(['Upload', 'Download'] as const).filter(type => activeJobs.some(job => job.transfer_type === type)).map(type => (
               <Typography key={type} variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <TransferActivityIcon type={type} active={activeJobs.some(job => job.transfer_type === type && job.status === 'InProgress')} />
-                {type}: {formatTransferSpeed(totalTransferSpeed(activeJobs, type))}
+                {type === 'Upload' ? '上传' : '下载'}: {formatTransferSpeed(totalTransferSpeed(activeJobs, type))}
               </Typography>
             ))}
           </Box>
@@ -133,7 +133,7 @@ export function TransferPanel({ filterType }: TransferPanelProps) {
              <List dense sx={{ py: 0 }}>
                {filteredJobs.length === 0 ? (
                  <ListItem>
-                   <Typography variant="caption" color="text.secondary">No transfers</Typography>
+                   <Typography variant="caption" color="text.secondary">暂无传输</Typography>
                  </ListItem>
                ) : (
                  [...activeJobs, ...filteredJobs.filter(job => !activeJobs.includes(job))].slice(0, 8).map((job) => {
@@ -158,7 +158,7 @@ export function TransferPanel({ filterType }: TransferPanelProps) {
                                 </Typography>
                               </Tooltip>
                               <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', ml: 1, fontVariantNumeric: 'tabular-nums' }}>
-                                {job.status === 'InProgress' ? `${formatTransferSpeed(transferSpeed(job))} · ` : ''}{job.url_import && !job.total_bytes && job.status !== 'Completed' ? 'Unknown' : `${Math.round(progress)}%`}
+                                {job.status === 'InProgress' ? `${formatTransferSpeed(transferSpeed(job))} · ` : ''}{job.url_import && !job.total_bytes && job.status !== 'Completed' ? '未知' : `${Math.round(progress)}%`}
                               </Typography>
                             </Box>
                             {job.phase && job.status === 'InProgress' && <Typography variant="caption" color="text.secondary" display="block">{job.phase}</Typography>}
@@ -194,7 +194,7 @@ export function TransferPanel({ filterType }: TransferPanelProps) {
                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
                    onClick={() => clearCompleted()}
                  >
-                   Clear finished
+                   清除已完成
                  </Typography>
                </Box>
              )}

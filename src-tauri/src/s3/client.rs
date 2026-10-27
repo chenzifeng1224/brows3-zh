@@ -386,13 +386,13 @@ pub async fn get_bucket_region(client: &Client, bucket_name: &str) -> Result<Str
         Ok(Ok(resp)) => resp,
         Ok(Err(e)) => {
             return Err(AppError::S3Error(format!(
-                "GetBucketLocation failed for '{}': {}",
+                "GetBucketLocation 对 '{}' 失败：{}",
                 bucket_name, e
             )));
         }
         Err(_) => {
             return Err(AppError::S3Error(format!(
-                "GetBucketLocation timed out for '{}'",
+                "GetBucketLocation 对 '{}' 超时",
                 bucket_name
             )));
         }

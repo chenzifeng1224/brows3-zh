@@ -7,18 +7,18 @@ use url::Url;
 pub fn parse_url(value: &str) -> Result<Url> {
     if value.len() > 16_384 || value.chars().any(char::is_control) || value.trim() != value {
         return Err(AppError::ConfigError(
-            "URL is too long or contains whitespace/control characters.".into(),
+            "URL 过长，或包含空白/控制字符。".into(),
         ));
     }
     let url = Url::parse(value)
-        .map_err(|_| AppError::ConfigError("Enter an absolute HTTP or HTTPS URL.".into()))?;
+        .map_err(|_| AppError::ConfigError("请输入完整的 HTTP 或 HTTPS URL。".into()))?;
     if !matches!(url.scheme(), "http" | "https")
         || url.host_str().is_none()
         || !url.username().is_empty()
         || url.password().is_some()
     {
         return Err(AppError::ConfigError(
-            "Use HTTP or HTTPS without embedded credentials.".into(),
+            "请使用不内嵌凭据的 HTTP 或 HTTPS。".into(),
         ));
     }
     Ok(url)
@@ -55,18 +55,18 @@ pub async fn request(value: &str, method: Method, headers: HeaderMap) -> Result<
     for _ in 0..=5 {
         let host = url
             .host_str()
-            .ok_or_else(|| AppError::ConfigError("Missing URL host.".into()))?;
+            .ok_or_else(|| AppError::ConfigError("缺少 URL 主机。".into()))?;
         let port = url.port_or_known_default().unwrap_or(443);
         let addresses: Vec<_> = tokio::time::timeout(
             Duration::from_secs(15),
             tokio::net::lookup_host((host.trim_matches(['[', ']']), port)),
         )
         .await
-        .map_err(|_| AppError::S3Error("Source DNS lookup timed out.".into()))?
-        .map_err(|_| AppError::S3Error("Cannot resolve source host.".into()))?
+        .map_err(|_| AppError::S3Error("源 DNS 解析超时。".into()))?
+        .map_err(|_| AppError::S3Error("无法解析源主机。".into()))?
         .collect();
         if addresses.is_empty() || addresses.iter().any(|a| !public_ip(a.ip())) {
-            return Err(AppError::ConfigError("URL imports and access checks require a public internet address; private/local networks are blocked.".into()));
+            return Err(AppError::ConfigError("URL 导入和访问检查需要公网地址；私有/本地网络已被阻止。".into()));
         }
         let client = reqwest::Client::builder()
             .no_proxy()
@@ -79,7 +79,7 @@ pub async fn request(value: &str, method: Method, headers: HeaderMap) -> Result<
             .no_zstd()
             .resolve_to_addrs(host, &addresses)
             .build()
-            .map_err(|_| AppError::ConfigError("Cannot initialize HTTP client.".into()))?;
+            .map_err(|_| AppError::ConfigError("无法初始化 HTTP 客户端。".into()))?;
         let mut outgoing = if url.origin() == original_origin {
             headers.clone()
         } else {
@@ -97,10 +97,10 @@ pub async fn request(value: &str, method: Method, headers: HeaderMap) -> Result<
                 .send(),
         )
         .await
-        .map_err(|_| AppError::S3Error("Source request timed out. Retry the import.".into()))?
+        .map_err(|_| AppError::S3Error("源请求超时，请重试导入。".into()))?
         .map_err(|_| {
             AppError::S3Error(
-                "Cannot connect to source. Check the URL, TLS certificate and network, then retry."
+                "无法连接源。请检查 URL、TLS 证书和网络后重试。"
                     .into(),
             )
         })?;
@@ -112,17 +112,17 @@ pub async fn request(value: &str, method: Method, headers: HeaderMap) -> Result<
             .get(reqwest::header::LOCATION)
             .and_then(|s| s.to_str().ok())
             .and_then(|s| url.join(s).ok())
-            .ok_or_else(|| AppError::ConfigError("Invalid source redirect.".into()))?;
+            .ok_or_else(|| AppError::ConfigError("源重定向无效。".into()))?;
         parse_url(next.as_str())?;
         if url.scheme() == "https" && next.scheme() != "https" {
             return Err(AppError::ConfigError(
-                "HTTPS downgrade redirects are blocked.".into(),
+                "已阻止 HTTPS 降级重定向。".into(),
             ));
         }
         url = next;
     }
     Err(AppError::ConfigError(
-        "Source redirected more than five times.".into(),
+        "源重定向次数超过五次。".into(),
     ))
 }
 

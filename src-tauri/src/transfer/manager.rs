@@ -110,8 +110,8 @@ impl TransferManager {
                     TransferStatus::Pending | TransferStatus::InProgress
                 ) {
                     job.status = TransferStatus::Failed(match job.transfer_type {
-                        TransferType::Upload => "Interrupted when the app closed. Check the destination before retrying; existing objects will not be replaced.".into(),
-                        TransferType::Download => "Interrupted when the app closed. Queue the download again to choose its destination.".into(),
+                        TransferType::Upload => "应用关闭时被中断。重试前请检查目标；已存在的对象不会被替换。".into(),
+                        TransferType::Download => "应用关闭时被中断。请重新加入下载以选择保存位置。".into(),
                     });
                     job.finished_at = Some(chrono::Utc::now().timestamp_millis());
                 }
@@ -183,7 +183,7 @@ impl TransferManager {
             for job in &added {
                 if let Some(current) = jobs.get_mut(&job.id) {
                     current.status =
-                        TransferStatus::Failed(format!("Could not save queued transfer: {error}"));
+                        TransferStatus::Failed(format!("无法保存已排队的传输：{error}"));
                 }
             }
             return;
@@ -228,7 +228,7 @@ impl TransferManager {
                     .get_or_insert_with(tokio::time::Instant::now);
                 progress.download_bytes =
                     progress.download_bytes.checked_add(bytes).ok_or_else(|| {
-                        crate::error::AppError::IoError("Download length overflow".into())
+                        crate::error::AppError::IoError("下载长度溢出".into())
                     })?;
                 start + super::controls::delay(progress.download_bytes, rate)
             };
@@ -424,10 +424,10 @@ impl TransferManager {
         match self.get_job(id).await.map(|job| job.status) {
             Some(TransferStatus::InProgress) => Ok(()),
             Some(TransferStatus::Cancelled) | None => Err(crate::error::AppError::ConfigError(
-                "Multipart upload was cancelled".to_string(),
+                "分段上传已取消".to_string(),
             )),
             Some(status) => Err(crate::error::AppError::ConfigError(format!(
-                "Multipart upload stopped because the transfer is no longer active ({status:?})"
+                "传输已不再活跃（{status:?}），分段上传已停止"
             ))),
         }
     }
@@ -721,13 +721,13 @@ impl TransferManager {
             .await
             .map_err(|error| {
                 crate::error::AppError::IoError(format!(
-                    "Cannot read upload file '{}': {error}",
+                    "无法读取上传文件 '{}'：{error}",
                     job.local_path
                 ))
             })?;
         if !metadata.is_file() {
             return Err(crate::error::AppError::IoError(format!(
-                "Upload source '{}' is not a regular file",
+                "上传源 '{}' 不是普通文件",
                 job.local_path
             )));
         }
@@ -810,7 +810,7 @@ impl TransferManager {
                 Ok(Ok(_)) => {}
                 Ok(Err(error)) => {
                     return Err(crate::error::AppError::S3Error(format!(
-                        "Single-part upload failed for s3://{}/{}: {}",
+                        "s3://{}/{} 的单段上传失败：{}",
                         job.bucket,
                         job.key,
                         DisplayErrorContext(&error)
@@ -818,8 +818,7 @@ impl TransferManager {
                 }
                 Err(_) => {
                     return Err(crate::error::AppError::S3Error(format!(
-                        "Single-part upload timed out after {}s for s3://{}/{} with no response from S3 \
-                         (check the endpoint, region, network/proxy, and TLS configuration)",
+                        "单段上传在 {}s 后超时，s3://{}/{}，S3 无响应（请检查端点、区域、网络/代理和 TLS 配置）",
                         timeout.as_secs(),
                         job.bucket,
                         job.key
@@ -873,7 +872,7 @@ impl TransferManager {
             Ok(Ok(output)) => output,
             Ok(Err(error)) => {
                 return Err(crate::error::AppError::S3Error(format!(
-                    "Could not start multipart upload for s3://{}/{}: {}",
+                    "无法启动 s3://{}/{} 的分段上传：{}",
                     job.bucket,
                     job.key,
                     DisplayErrorContext(&error)
@@ -881,8 +880,7 @@ impl TransferManager {
             }
             Err(_) => {
                 return Err(crate::error::AppError::S3Error(format!(
-                    "Starting multipart upload timed out after {}s for s3://{}/{} with no response from S3 \
-                     (check the endpoint, region, network/proxy, and TLS configuration)",
+                    "分段上传启动在 {}s 后超时，s3://{}/{}，S3 无响应（请检查端点、区域、网络/代理和 TLS 配置）",
                     METADATA_REQUEST_TIMEOUT.as_secs(),
                     job.bucket,
                     job.key
@@ -891,7 +889,7 @@ impl TransferManager {
         };
         let upload_id = created.upload_id().ok_or_else(|| {
             crate::error::AppError::S3Error(format!(
-                "S3 did not return an upload ID for s3://{}/{}",
+                "S3 未返回 s3://{}/{} 的上传 ID",
                 job.bucket, job.key
             ))
         })?;
@@ -914,7 +912,7 @@ impl TransferManager {
                     .await
                     .map_err(|error| {
                         crate::error::AppError::IoError(format!(
-                            "Could not read part {} from '{}': {error}",
+                            "无法读取第 {} 段（文件 '{}'）：{error}",
                             part.number, job.local_path
                         ))
                     })?;
@@ -935,7 +933,7 @@ impl TransferManager {
                     Ok(Ok(output)) => output,
                     Ok(Err(error)) => {
                         return Err(crate::error::AppError::S3Error(format!(
-                            "Multipart upload failed at part {} of {} for s3://{}/{}: {}",
+                            "第 {} / {} 段的分段上传失败，s3://{}/{}：{}",
                             part.number,
                             plan.parts.len(),
                             job.bucket,
@@ -945,8 +943,7 @@ impl TransferManager {
                     }
                     Err(_) => {
                         return Err(crate::error::AppError::S3Error(format!(
-                            "Multipart upload timed out after {}s at part {} of {} for s3://{}/{} with no \
-                             response from S3 (check the endpoint, region, network/proxy, and TLS configuration)",
+                            "分段上传在 {}s 后于第 {} / {} 段超时，s3://{}/{}，S3 无响应（请检查端点、区域、网络/代理和 TLS 配置）",
                             part_timeout.as_secs(),
                             part.number,
                             plan.parts.len(),
@@ -958,7 +955,7 @@ impl TransferManager {
                 self.ensure_multipart_job_active(&job.id).await?;
                 let e_tag = output.e_tag().ok_or_else(|| {
                     crate::error::AppError::S3Error(format!(
-                        "S3 did not return an ETag for multipart part {} of s3://{}/{}",
+                        "S3 未返回第 {} 段的 ETag（s3://{}/{}）",
                         part.number, job.bucket, job.key
                     ))
                 })?;
@@ -994,7 +991,7 @@ impl TransferManager {
                 Ok(Ok(_)) => {}
                 Ok(Err(error)) => {
                     return Err(crate::error::AppError::S3Error(format!(
-                        "Could not complete multipart upload for s3://{}/{}: {}",
+                        "无法完成 s3://{}/{} 的分段上传：{}",
                         job.bucket,
                         job.key,
                         DisplayErrorContext(&error)
@@ -1002,8 +999,7 @@ impl TransferManager {
                 }
                 Err(_) => {
                     return Err(crate::error::AppError::S3Error(format!(
-                        "Completing multipart upload timed out after {}s for s3://{}/{} with no response from S3 \
-                         (check the endpoint, region, network/proxy, and TLS configuration)",
+                        "分段上传完成在 {}s 后超时，s3://{}/{}，S3 无响应（请检查端点、区域、网络/代理和 TLS 配置）",
                         METADATA_REQUEST_TIMEOUT.as_secs(),
                         job.bucket,
                         job.key
@@ -1037,7 +1033,7 @@ impl TransferManager {
         if let Some(source) = &job.url_import {
             if source.profile_identity != destination.cache_identity() {
                 return Err(crate::error::AppError::ConfigError(
-                    "Connection settings changed. Import the URLs again.".into(),
+                    "连接设置已更改，请重新导入 URL。".into(),
                 ));
             }
             let client = {
@@ -1109,7 +1105,7 @@ impl TransferManager {
         let source = job
             .remote_source
             .as_ref()
-            .ok_or_else(|| crate::error::AppError::ConfigError("Missing remote source.".into()))?;
+            .ok_or_else(|| crate::error::AppError::ConfigError("缺少远程源。".into()))?;
         if let Some(guard) = &job.restore_guard {
             crate::s3::versions::validate_restore(destination_client, &job.bucket, &job.key, guard)
                 .await?;
@@ -1124,7 +1120,7 @@ impl TransferManager {
                         .await?;
                 if current.head.version_id() != Some(guard.current_version.as_str()) {
                     return Err(crate::error::AppError::S3Error(
-                        "Current version changed. Refresh history and confirm again.".into(),
+                        "当前版本已更改，请刷新历史记录并重新确认。".into(),
                     ));
                 }
                 current.head.content_type = attributes.head.content_type;
@@ -1160,7 +1156,7 @@ impl TransferManager {
             .is_some_and(|s| !s.current_session || s.profile_identity != profile.cache_identity())
         {
             return Err(crate::error::AppError::ConfigError(
-                "Sync profile settings changed or the app restarted. Create a fresh preview."
+                "同步配置设置已更改，或应用已重启。请重新生成预览。"
                     .into(),
             ));
         }
@@ -1227,7 +1223,7 @@ impl TransferManager {
                             .await
                             .map_err(|error| {
                                 crate::error::AppError::S3Error(format!(
-                                    "Upload retry in detected bucket region '{new_region}' failed: {error}"
+                                    "在检测到的存储桶区域 '{new_region}' 重试上传失败：{error}"
                                 ))
                             })?;
                     } else {
@@ -1251,8 +1247,7 @@ impl TransferManager {
                     Ok(Ok(output)) => output,
                     Err(_) => {
                         return Err(crate::error::AppError::S3Error(format!(
-                            "Download timed out after {}s for s3://{}/{} with no response from S3 \
-                             (check the endpoint, region, network/proxy, and TLS configuration)",
+                            "下载在 {}s 后超时，s3://{}/{}，S3 无响应（请检查端点、区域、网络/代理和 TLS 配置）",
                             METADATA_REQUEST_TIMEOUT.as_secs(),
                             job.bucket,
                             job.key
@@ -1283,8 +1278,7 @@ impl TransferManager {
                             .await
                             .map_err(|_| {
                                 crate::error::AppError::S3Error(format!(
-                                    "Retry download timed out after {}s for s3://{}/{} with no response \
-                                     from S3 (check the endpoint, region, network/proxy, and TLS configuration)",
+                                    "重试下载在 {}s 后超时，s3://{}/{}，S3 无响应（请检查端点、区域、网络/代理和 TLS 配置）",
                                     METADATA_REQUEST_TIMEOUT.as_secs(),
                                     job.bucket,
                                     job.key
@@ -1292,7 +1286,7 @@ impl TransferManager {
                             })?
                             .map_err(|e| {
                                 crate::error::AppError::S3Error(format!(
-                                    "Retry download failed: {}",
+                                    "重试下载失败：{}",
                                     DisplayErrorContext(&e)
                                 ))
                                 })?
@@ -1307,7 +1301,7 @@ impl TransferManager {
 
                 let destination = job.download_destination.as_ref().ok_or_else(|| {
                     crate::error::AppError::IoError(
-                        "Missing download destination. Queue the download again.".to_string(),
+                        "缺少下载目标，请重新加入下载。".to_string(),
                     )
                 })?;
                 let mut download = destination.begin()?;
@@ -1320,7 +1314,7 @@ impl TransferManager {
                         .await
                         .map_err(|_| {
                             crate::error::AppError::S3Error(
-                                "Download stalled for 60 seconds. Check the connection and retry."
+                                "下载停滞超过 60 秒，请检查连接后重试。"
                                     .into(),
                             )
                         })?
@@ -1348,11 +1342,11 @@ impl TransferManager {
                 download.finish_writing().await?;
                 let mut jobs = self.jobs.write().await;
                 let current = jobs.get_mut(&job.id).ok_or_else(|| {
-                    crate::error::AppError::IoError("Download was removed".to_string())
+                    crate::error::AppError::IoError("下载已被移除".to_string())
                 })?;
                 if current.status != TransferStatus::InProgress {
                     return Err(crate::error::AppError::IoError(
-                        "Download was cancelled".to_string(),
+                        "下载已取消".to_string(),
                     ));
                 }
                 download.commit()?;
@@ -2236,7 +2230,7 @@ mod tests {
             .await
             .unwrap_err()
             .to_string()
-            .contains("changed since preview"));
+            .contains("预览后已更改"));
     }
 
     #[tokio::test]
@@ -2723,7 +2717,7 @@ mod tests {
             .unwrap();
         let current = manager.get_job(&queued.id).await.unwrap();
         assert_eq!(current.total_bytes, bytes.len() as u64);
-        assert_eq!(current.phase.as_deref(), Some("Uploading to S3"));
+        assert_eq!(current.phase.as_deref(), Some("正在上传到 S3"));
         let actual = client
             .get_object()
             .bucket(&bucket)

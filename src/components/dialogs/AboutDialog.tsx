@@ -28,14 +28,14 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
       return;
     }
 
-    getVersion().then(setVersion).catch(() => setVersion('Unknown'));
+    getVersion().then(setVersion).catch(() => setVersion('未知'));
   }, [open]);
 
   return (
     <BaseDialog 
       open={open} 
       onClose={onClose} 
-      title="About Brows3"
+      title="关于 Brows3"
       maxWidth="xs"
     >
       <Box sx={{ textAlign: 'center', pb: 2 }}>
@@ -64,7 +64,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
         
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 3 }}>
           <Chip 
-            label={`Version ${version}`} 
+            label={`版本 ${version}`} 
             size="small" 
             sx={{ 
               fontWeight: 800, 
@@ -75,7 +75,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
             }}
           />
           <Chip 
-            label="Public Beta" 
+            label="公开测试版" 
             size="small" 
             sx={{ 
               fontWeight: 800, 
@@ -88,8 +88,8 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
         </Box>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.7, fontWeight: 500 }}>
-          The high-performance, open-source Amazon S3 desktop client. 
-          Built for speed, security, and a premium developer experience.
+          高性能、开源的 Amazon S3 桌面客户端。
+          为速度、安全和优质的开发者体验而打造。
         </Typography>
         
         <Divider sx={{ mb: 4, bgcolor: alpha(theme.palette.divider, 0.5) }} />
@@ -111,7 +111,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
             }}
           >
             <GitHubIcon fontSize="small" />
-            View Source Code
+            查看源代码
           </Link>
           <Link 
             href="https://github.com/rgcsekaraa/brows3/issues" 
@@ -120,7 +120,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
             color="text.secondary"
             sx={{ fontSize: '0.85rem', fontWeight: 600 }}
           >
-            Report a bug or request a feature
+            报告问题或请求新功能
           </Link>
         </Box>
         
@@ -129,7 +129,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
             TAURI • REACT • RUST • NEXT.JS
           </Typography>
           <Typography variant="caption" display="block" color="text.disabled" sx={{ mt: 1, opacity: 0.5 }}>
-            Released under MIT License © 2026
+            基于 MIT 许可证发布 © 2026
           </Typography>
         </Box>
       </Box>

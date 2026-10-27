@@ -466,7 +466,7 @@ impl ProfileManager {
             } => {
                 if secret_access_key.is_empty() {
                     return Err(AppError::InvalidCredentials(
-                        "Enter a secret access key; the stored secret could not be read.".into(),
+                        "请输入 Secret Access Key；无法读取已保存的密钥。".into(),
                     ));
                 }
                 self.keychain.store(
@@ -914,7 +914,7 @@ mod tests {
 
         assert!(manual_again
             .to_string()
-            .contains("Enter a secret access key"));
+            .contains("请输入 Secret Access Key"));
         assert!(manager.load_secret(&created).unwrap().is_none());
     }
 }

@@ -141,7 +141,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                 // Smart default: If we are in "add" mode and haven't started typing a name yet
                 if (mode === 'add' && !formData.name && !editProfile) {
                     if (env.has_access_key) {
-                        setFormData((prev) => ({ ...prev, credentialType: 'Environment', name: 'Environment Credentials' }));
+                        setFormData((prev) => ({ ...prev, credentialType: 'Environment', name: '环境变量凭据' }));
                     } else if (discovered.length > 0) {
                         const defaultProf = discovered.find((p) => p.name === 'default') || discovered[0];
                         setFormData((prev) => ({
@@ -149,7 +149,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                             credentialType: 'SharedConfig',
                             profileName: defaultProf.name,
                             region: defaultProf.region || prev.region,
-                            name: `Local AWS (${defaultProf.name})`
+                            name: `本地 AWS（${defaultProf.name}）`
                         }));
                     }
                 }
@@ -287,7 +287,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
     try {
       const profile: Partial<Profile> = {
         id: editProfile?.id || '',
-        name: formData.name || 'Test',
+        name: formData.name || '测试',
         credential_type: buildCredentialType(),
         region: formData.region,
         is_default: false,
@@ -299,7 +299,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
       }
     } catch (err) {
       if (requestId === testRequestIdRef.current) {
-        setError(err instanceof Error ? err.message : 'Connection test failed');
+        setError(err instanceof Error ? err.message : '连接测试失败');
       }
     } finally {
       if (requestId === testRequestIdRef.current) {
@@ -311,7 +311,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
   const handleSsoLogin = async () => {
     const profileName = formData.profileName.trim();
     if (!profileName) {
-      setError('Choose an AWS SSO profile first.');
+      setError('请先选择一个 AWS SSO 配置。');
       return;
     }
 
@@ -320,7 +320,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
     setTestResult(null);
     try {
       const message = await profileApi.loginSso(profileName);
-      toast.success('AWS SSO signed in', message);
+      toast.success('AWS SSO 已登录', message);
       await handleTestConnection();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -331,7 +331,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
   
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      setError('Profile name is required');
+      setError('配置名称为必填项');
       return;
     }
     
@@ -385,12 +385,12 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
     let confirmed = false;
     try {
       const { confirm } = await import('@tauri-apps/plugin-dialog');
-      confirmed = await confirm(`This will permanently delete "${profileName}" and clear all cached data.`, {
-        title: 'Delete Profile?',
+      confirmed = await confirm(`将永久删除“${profileName}”并清除所有缓存数据。`, {
+        title: '删除配置？',
         kind: 'warning',
       });
     } catch {
-      confirmed = window.confirm(`Delete profile "${profileName}"?`);
+      confirmed = window.confirm(`删除配置“${profileName}”？`);
     }
     
     if (!confirmed) return;
@@ -411,10 +411,10 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
       clearHistory();
       clearClipboard();
       
-      toast.success(`Profile "${profileName}" deleted.`);
+      toast.success(`配置“${profileName}”已删除。`);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete profile');
+      setError(err instanceof Error ? err.message : '删除配置失败');
     }
   };
   
@@ -438,9 +438,9 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
   };
 
   const getDialogTitle = () => {
-    if (mode === 'list' && !editProfile) return "Cloud Profiles";
-    if (mode === 'edit') return "Update Profile";
-    return "New Cloud Connection";
+    if (mode === 'list' && !editProfile) return "云端配置";
+    if (mode === 'edit') return "更新配置";
+    return "新建云连接";
   };
   
   const renderList = () => (
@@ -471,9 +471,9 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
               }}>
                 <CloudIcon sx={{ fontSize: 48 }} />
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>Connect to Cloud</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>连接云端</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 350, fontWeight: 500 }}>
-                Manage your AWS, Wasabi, DigitalOcean, or any S3-compatible accounts in one place.
+                在一处管理 AWS、Wasabi、DigitalOcean 或任意 S3 兼容账户。
               </Typography>
               <Button 
                 variant="contained"
@@ -488,7 +488,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                   boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`
                 }}
               >
-                Create New Profile
+                创建新配置
               </Button>
             </Box>
           ) : (
@@ -500,7 +500,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                 mb: 2, 
                 display: 'block' 
               }}>
-                ACTIVE CONNECTIONS
+                当前连接
               </Typography>
               <List sx={{ pt: 0, px: 0 }}>
                 {profiles.map((profile) => (
@@ -554,11 +554,11 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                                       borderRadius: 1,
                                       textTransform: 'uppercase'
                                   }}>
-                                      {profile.credential_type.type === 'CustomEndpoint' ? 'S3 COMPAT' : profile.credential_type.type}
+                                      {profile.credential_type.type === 'CustomEndpoint' ? 'S3 兼容' : profile.credential_type.type}
                                   </Box>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', opacity: 0.8 }}>
                                       <RegionIcon sx={{ fontSize: 14 }} /> 
-                                      <Typography variant="caption" sx={{ fontWeight: 700 }}>{profile.region || 'global'}</Typography>
+                                      <Typography variant="caption" sx={{ fontWeight: 700 }}>{profile.region || '全局'}</Typography>
                                   </Box>
                               </Box>
                           }
@@ -566,7 +566,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                         />
                         <ListItemSecondaryAction sx={{ right: 24 }}>
                           <Box sx={{ display: 'flex', gap: 1.5 }}>
-                            <Tooltip title="Settings">
+                            <Tooltip title="设置">
                                 <IconButton 
                                   size="small" 
                                   onClick={(e) => { e.stopPropagation(); handleEditMode(profile); }}
@@ -575,7 +575,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                                     <EditIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
-                            <Tooltip title="Delete">
+                            <Tooltip title="删除">
                                 <IconButton 
                                   size="small" 
                                   onClick={(e) => { e.stopPropagation(); handleDelete(profile.id, profile.name); }} 
@@ -607,7 +607,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                   borderColor: alpha(theme.palette.divider, 1)
                 }}
               >
-                Add Another Profile
+                添加其他配置
               </Button>
             </Box>
           )}
@@ -619,8 +619,8 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
     <Fade in={mode !== 'list'}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
         <TextField
-          label="Profile Name"
-          placeholder="e.g. Production AWS"
+          label="配置名称"
+          placeholder="例如：生产环境 AWS"
           value={formData.name}
           onChange={(e) => updateField('name', e.target.value)}
           fullWidth
@@ -633,17 +633,17 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
         />
         
         <FormControl fullWidth>
-          <InputLabel sx={{ fontWeight: 700 }}>Authentication Method</InputLabel>
+          <InputLabel sx={{ fontWeight: 700 }}>认证方式</InputLabel>
           <Select
             value={formData.credentialType}
-            label="Authentication Method"
+            label="认证方式"
             onChange={(e) => handleCredentialTypeChange(e.target.value as CredentialTypeKey)}
             sx={{ borderRadius: 2, fontWeight: 600 }}
           >
-            <MenuItem value="Environment">System Environment Variables</MenuItem>
-            <MenuItem value="SharedConfig">AWS Profile / IAM Identity Center (SSO)</MenuItem>
-            <MenuItem value="Manual">Manual Credentials (AK/SK)</MenuItem>
-            <MenuItem value="CustomEndpoint">Custom S3 / Compatibility Mode</MenuItem>
+            <MenuItem value="Environment">系统环境变量</MenuItem>
+            <MenuItem value="SharedConfig">AWS 配置 / IAM Identity Center (SSO)</MenuItem>
+            <MenuItem value="Manual">手动凭据（AK/SK）</MenuItem>
+            <MenuItem value="CustomEndpoint">自定义 S3 / 兼容模式</MenuItem>
           </Select>
         </FormControl>
         
@@ -663,14 +663,14 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
              >
                {awsEnv?.has_access_key ? (
                  <Box>
-                   <Typography variant="body2" sx={{ fontWeight: 800 }}>System Credentials Detected</Typography>
+                   <Typography variant="body2" sx={{ fontWeight: 800 }}>检测到系统凭据</Typography>
                    <Typography variant="caption" sx={{ fontWeight: 600, opacity: 0.8 }}>
-                     Using: {awsEnv.has_access_key ? 'AWS_ACCESS_KEY_ID' : ''} 
-                     {awsEnv.has_secret_key ? ' + SECRET' : ''}
+                     使用：{awsEnv.has_access_key ? 'AWS_ACCESS_KEY_ID' : ''} 
+                     {awsEnv.has_secret_key ? ' + 密钥' : ''}
                    </Typography>
                  </Box>
                ) : (
-                 <Typography variant="body2" sx={{ fontWeight: 600 }}>No <code>AWS_ACCESS_KEY_ID</code> found. Ensure environment variables are set before launch.</Typography>
+                 <Typography variant="body2" sx={{ fontWeight: 600 }}>未找到 <code>AWS_ACCESS_KEY_ID</code>。请确保在启动应用前已设置环境变量。</Typography>
                )}
              </Alert>
         )}
@@ -702,7 +702,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
             renderInput={(params) => (
                 <TextField 
                     {...params} 
-                    label="Local AWS Profile" 
+                    label="本地 AWS 配置" 
                     placeholder="default"
                     fullWidth
                 />
@@ -711,10 +711,10 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
           {discoveredProfiles.find((profile) => profile.name === formData.profileName)?.is_sso && (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
               <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-                AWS IAM Identity Center profile
+                AWS IAM Identity Center 配置
               </Typography>
               <Typography variant="caption" component="div" sx={{ mb: 1.5 }}>
-                Brows3 uses the AWS SDK credential chain and cached SSO session. Sign in with AWS CLI v2 before testing the connection.
+                Brows3 使用 AWS SDK 凭据链和已缓存的 SSO 会话。请在测试连接前先用 AWS CLI v2 登录。
               </Typography>
               <Button
                 size="small"
@@ -723,7 +723,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                 disabled={signingInSso || testing}
                 startIcon={signingInSso ? <CircularProgress size={14} /> : undefined}
               >
-                {signingInSso ? 'Waiting for browser sign-in…' : 'Sign in with AWS SSO'}
+                {signingInSso ? '等待浏览器登录…' : '使用 AWS SSO 登录'}
               </Button>
             </Alert>
           )}
@@ -734,7 +734,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, p: 3, borderRadius: 3, border: '1px dashed', borderColor: 'divider', bgcolor: alpha(theme.palette.background.paper, 0.3) }}>
                 {formData.credentialType === 'CustomEndpoint' && (
                   <TextField
-                    label="Endpoint URL"
+                    label="端点 URL"
                     value={formData.endpointUrl}
                     onChange={(e) => updateField('endpointUrl', e.target.value)}
                     fullWidth
@@ -743,14 +743,14 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                   />
                 )}
                 <TextField
-                    label="Access Key ID"
+                    label="访问密钥 ID"
                     value={formData.accessKeyId}
                     onChange={(e) => updateField('accessKeyId', e.target.value)}
                     fullWidth
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5, bgcolor: 'background.paper', fontWeight: 600 } }}
                 />
                 <TextField
-                    label="Secret Access Key"
+                    label="私有访问密钥"
                     type="password"
                     value={formData.secretAccessKey}
                     onChange={(e) => updateField('secretAccessKey', e.target.value)}
@@ -772,7 +772,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
           renderInput={(params) => (
             <TextField
               {...params}
-              label="Default Region"
+              label="默认区域"
               fullWidth
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, fontWeight: 600 } }}
             />
@@ -789,12 +789,12 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
               startIcon={testing ? <CircularProgress size={16} /> : <CheckIcon fontSize="small" />}
               sx={{ borderRadius: 100, fontWeight: 700, px: 2 }}
             >
-              Test Connection
+              测试连接
             </Button>
             
             {testResult && (
               <Chip 
-                label={testResult.success ? "Connection OK" : "Failed"} 
+                label={testResult.success ? "连接正常" : "失败"} 
                 color={testResult.success ? "success" : "error"}
                 size="small"
                 sx={{ fontWeight: 800, borderRadius: 1 }}
@@ -825,7 +825,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
               disabled={saving} 
               sx={{ fontWeight: 700, color: 'text.secondary' }}
             >
-              Cancel
+              取消
             </Button>
             <Button 
               variant="contained" 
@@ -839,7 +839,7 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
                   boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.2)}`
               }}
             >
-              {saving ? 'Saving...' : mode === 'edit' ? 'Update Profile' : 'Connect Account'}
+              {saving ? '保存中...' : mode === 'edit' ? '更新配置' : '连接账户'}
             </Button>
           </Box>
         ) : null

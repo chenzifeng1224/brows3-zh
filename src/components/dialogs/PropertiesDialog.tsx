@@ -95,10 +95,10 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
     } catch (err) {
       const errorMsg = String(err);
       if (requestId === requestIdRef.current) {
-        if (errorMsg.includes('Access Denied') || errorMsg.includes('403')) {
-            setError('Access Denied: You do not have permission to view metadata.');
+        if (errorMsg.includes('Access Denied') || errorMsg.includes('403') || errorMsg.includes('权限')) {
+            setError('访问被拒绝：你没有查看元数据的权限。');
         } else {
-            setError(`Failed to load properties: ${errorMsg}`);
+            setError(`加载属性失败：${errorMsg}`);
         }
       }
     } finally {
@@ -138,7 +138,7 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
         nextContentType
       );
       await fetchMetadata();
-      toast.success('Content-Type updated', `${objectKey} now uses ${nextContentType}`);
+      toast.success('内容类型已更新', `${objectKey} 现在使用 ${nextContentType}`);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -150,12 +150,12 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
     <BaseDialog 
       open={open} 
       onClose={onClose} 
-      title={`Properties: ${objectKey.split('/').pop()}`}
+      title={`属性：${objectKey.split('/').pop()}`}
       maxWidth="sm"
       actions={
         <Box sx={{ display: 'flex', width: '100%', justifyContent: 'flex-end', gap: 1 }}>
           <Button onClick={onClose} disabled={savingContentType}>
-            Close
+            关闭
           </Button>
           <Button
             onClick={handleSaveContentType}
@@ -168,7 +168,7 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
               || contentType.trim() === metadata.content_type
             }
           >
-            {savingContentType ? 'Saving…' : 'Save Content-Type'}
+            {savingContentType ? '保存中…' : '保存内容类型'}
           </Button>
         </Box>
       }
@@ -176,7 +176,7 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
       {loading ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, gap: 2 }}>
            <CircularProgress size={32} />
-           <Typography variant="body2" color="text.secondary">Loading metadata...</Typography>
+           <Typography variant="body2" color="text.secondary">加载元数据中...</Typography>
         </Box>
       ) : error ? (
         <Box sx={{ p: 2 }}>
@@ -193,8 +193,8 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
                   '& .Mui-selected': { color: theme.palette.primary.main }
                 }}
               >
-                  <Tab label="General" />
-                  <Tab label="Metadata" />
+                  <Tab label="常规" />
+                  <Tab label="元数据" />
               </Tabs>
             </Box>
             
@@ -203,15 +203,15 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
                     <Table size="small">
                         <TableBody>
                             <TableRow sx={{ '&:last-child td': { border: 0 } }}>
-                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary', width: '35%' }}>Key</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary', width: '35%' }}>键</TableCell>
                                 <TableCell sx={{ wordBreak: 'break-all', fontWeight: 600 }}>{metadata.key}</TableCell>
                             </TableRow>
                             <TableRow sx={{ '&:last-child td': { border: 0 } }}>
-                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Size</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>大小</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>{formatSize(metadata.size)}</TableCell>
                             </TableRow>
                             <TableRow sx={{ '&:last-child td': { border: 0 } }}>
-                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Content Type</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>内容类型</TableCell>
                                 <TableCell>
                                   <Autocomplete
                                     freeSolo
@@ -224,14 +224,14 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
                                       <TextField
                                         {...params}
                                         placeholder="application/octet-stream"
-                                        inputProps={{ ...params.inputProps, 'aria-label': 'Object Content-Type' }}
+                                        inputProps={{ ...params.inputProps, 'aria-label': '对象内容类型' }}
                                       />
                                     )}
                                   />
                                 </TableCell>
                             </TableRow>
                             <TableRow sx={{ '&:last-child td': { border: 0 } }}>
-                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Modified</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>修改时间</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>{metadata.last_modified}</TableCell>
                             </TableRow>
                             <TableRow sx={{ '&:last-child td': { border: 0 } }}>
@@ -239,7 +239,7 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
                                 <TableCell sx={{ fontFamily: 'monospace', fontWeight: 500, fontSize: '0.8rem' }}>{metadata.e_tag || '-'}</TableCell>
                             </TableRow>
                             <TableRow sx={{ '&:last-child td': { border: 0 } }}>
-                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Storage Class</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>存储类</TableCell>
                                 <TableCell>
                                     <Chip 
                                       label={metadata.storage_class || 'STANDARD'} 
@@ -259,7 +259,7 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
                     </Table>
                 </TableContainer>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-                  Updating Content-Type copies the object in place to replace its metadata. Versioned buckets may create a new object version.
+                  更新内容类型会就地复制对象以替换其元数据。启用版本控制的存储桶可能会生成新的对象版本。
                 </Typography>
                 {saveError && <Alert severity="error" sx={{ mt: 1.5 }}>{saveError}</Alert>}
             </CustomTabPanel>
@@ -267,7 +267,7 @@ export default function PropertiesDialog({ open, onClose, bucketName, bucketRegi
             <CustomTabPanel value={tabValue} index={1}>
                 {Object.keys(metadata.user_metadata).length === 0 ? (
                     <Box sx={{ py: 4, textAlign: 'center', opacity: 0.6 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>No user metadata found.</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>未找到用户元数据。</Typography>
                     </Box>
                 ) : (
                      <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.palette.background.paper, 0.3) }}>

@@ -46,15 +46,15 @@ fn open_source(root: &Dir, relative: &Path) -> Result<cap_std::fs::File> {
             .components()
             .any(|c| !matches!(c, Component::Normal(_)))
     {
-        return Err(io_error("Invalid relative sync path"));
+        return Err(io_error("同步相对路径无效"));
     }
     let metadata = root.symlink_metadata(relative).map_err(io_error)?;
     if !metadata.is_file() || metadata.is_symlink() {
-        return Err(io_error("Sync accepts regular files only"));
+        return Err(io_error("同步仅接受普通文件"));
     }
     let file = root.open(relative).map_err(io_error)?;
     if !file.metadata().map_err(io_error)?.is_file() {
-        return Err(io_error("Sync source is not a regular file"));
+        return Err(io_error("同步源不是普通文件"));
     }
     Ok(file)
 }
@@ -71,7 +71,7 @@ fn hash_file(
     loop {
         if Instant::now() > deadline {
             return Err(io_error(
-                "Local sync scan timed out. Choose a smaller folder.",
+                "本地同步扫描超时，请选择更小的文件夹。",
             ));
         }
         let read = file.read(&mut buffer).map_err(io_error)?;
@@ -101,7 +101,7 @@ pub fn scan(root: &Path, prefix: &str) -> Result<Vec<LocalFile>> {
             .is_symlink()
     {
         return Err(io_error(
-            "Choose an absolute folder path, not a symbolic link",
+            "请选择文件夹的绝对路径，不能是符号链接",
         ));
     }
     let root = root.canonicalize().map_err(io_error)?;
@@ -113,23 +113,23 @@ pub fn scan(root: &Path, prefix: &str) -> Result<Vec<LocalFile>> {
         .max_open(16)
     {
         if Instant::now() > deadline {
-            return Err(io_error("Local scan timed out"));
+            return Err(io_error("本地扫描超时"));
         }
         let entry = entry.map_err(io_error)?;
         if entry.path_is_symlink() {
             return Err(io_error(
-                "The folder contains a symbolic link. Select a folder without links.",
+                "文件夹中包含符号链接，请选择不含链接的文件夹。",
             ));
         }
         if entry.file_type().is_dir() {
             continue;
         }
         if !entry.file_type().is_file() {
-            return Err(io_error("The folder contains a non-regular file"));
+            return Err(io_error("文件夹中包含非普通文件"));
         }
         if files.len() >= MAX_FILES {
             return Err(io_error(
-                "Sync is limited to 10,000 files. Choose a smaller folder.",
+                "同步最多支持 10,000 个文件，请选择更小的文件夹。",
             ));
         }
         let relative = entry
@@ -142,12 +142,12 @@ pub fn scan(root: &Path, prefix: &str) -> Result<Vec<LocalFile>> {
             .map(|p| {
                 p.as_os_str()
                     .to_str()
-                    .ok_or_else(|| io_error("Sync filenames must be valid Unicode"))
+                    .ok_or_else(|| io_error("同步文件名必须是有效的 Unicode"))
             })
             .collect::<Result<Vec<_>>>()?;
         let key = format!("{prefix}{}", parts.join("/"));
         if key.len() > 1024 {
-            return Err(io_error("A destination key exceeds S3's 1,024-byte limit"));
+            return Err(io_error("目标键超过 S3 的 1,024 字节上限"));
         }
         let (size, sha256, md5) = hash_file(open_source(&dir, &relative)?, None, deadline)?;
         files.push(LocalFile {
@@ -181,7 +181,7 @@ pub fn snapshot(source: &SyncSource) -> Result<tempfile::NamedTempFile> {
     )?;
     if size != source.size || digest != source.sha256 {
         return Err(io_error(
-            "Local file changed since preview. Preview the folder again before syncing.",
+            "本地文件在预览后已更改，请在同步前重新预览文件夹。",
         ));
     }
     Ok(temp)
@@ -248,12 +248,12 @@ pub async fn attributes(
             .map_err(|e| AppError::S3Error(s3_error_message(&e)))?;
         if head.e_tag() != Some(expected) {
             return Err(io_error(
-                "Destination changed since preview. Preview again.",
+                "目标在预览后已更改，请重新预览。",
             ));
         }
         if head.sse_customer_algorithm().is_some() {
             return Err(io_error(
-                "Cannot safely sync an object encrypted with a customer-provided key",
+                "无法安全同步使用客户提供密钥加密的对象",
             ));
         }
         let acl = match client
@@ -275,7 +275,7 @@ pub async fn attributes(
             }
             Err(e) => {
                 return Err(io_error(format!(
-                    "Cannot preserve destination permissions: {}",
+                    "无法保留目标权限：{}",
                     s3_error_message(&e)
                 )))
             }
@@ -299,7 +299,7 @@ pub async fn attributes(
             }
             Err(e) => {
                 return Err(io_error(format!(
-                    "Cannot preserve destination tags: {}",
+                    "无法保留目标标签：{}",
                     s3_error_message(&e)
                 )))
             }
@@ -307,7 +307,7 @@ pub async fn attributes(
         Ok(Attributes { head, acl, tags })
     })
     .await
-    .map_err(|_| io_error("Checking destination attributes timed out"))?
+    .map_err(|_| io_error("检查目标属性超时"))?
 }
 
 // Keep ordinary uploads untouched. Only sync replacements inherit destination attributes.

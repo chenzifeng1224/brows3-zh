@@ -58,7 +58,7 @@ impl KeychainStorage {
         }
 
         serde_json::from_str(&content).map_err(|e| {
-            AppError::SerializationError(format!("Failed to parse fallback secrets store: {}", e))
+            AppError::SerializationError(format!("解析备用密钥存储失败：{}", e))
         })
     }
 
@@ -76,7 +76,7 @@ impl KeychainStorage {
     fn get_fallback(&self, key: &str) -> Result<String> {
         let data = self.read_fallback_secrets()?;
         data.secrets.get(key).cloned().ok_or_else(|| {
-            AppError::KeychainError("Secret not found in fallback storage".to_string())
+            AppError::KeychainError("备用存储中未找到密钥".to_string())
         })
     }
 

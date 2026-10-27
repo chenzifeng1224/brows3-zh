@@ -41,11 +41,11 @@ impl JobConfig {
             || self.name.chars().any(char::is_control)
         {
             return Err(invalid(
-                "Use a job name of 1 to 120 bytes without control characters.",
+                "任务名称需为 1 到 120 字节，且不能包含控制字符。",
             ));
         }
         if !PathBuf::from(&self.local_path).is_absolute() || self.local_path.len() > 4096 {
-            return Err(invalid("Choose an absolute local folder path."));
+            return Err(invalid("请选择本地文件夹的绝对路径。"));
         }
         if self.profile_id.is_empty()
             || self.bucket.is_empty()
@@ -53,17 +53,17 @@ impl JobConfig {
             || self.prefix.len() > 1024
             || (!self.prefix.is_empty() && !self.prefix.ends_with('/'))
         {
-            return Err(invalid("Choose a profile, bucket, and folder destination."));
+            return Err(invalid("请选择配置、存储桶和目标文件夹。"));
         }
         if self
             .interval_minutes
             .is_some_and(|m| !(15..=10080).contains(&m))
         {
-            return Err(invalid("Schedule intervals must be 15 minutes to 7 days."));
+            return Err(invalid("计划间隔需在 15 分钟到 7 天之间。"));
         }
         if !self.options.skip_existing && !self.allow_replacement {
             return Err(invalid(
-                "Approve replacement for future runs, or skip existing objects.",
+                "请允许后续运行替换对象，或跳过已存在的对象。",
             ));
         }
         Filters::new(&self.options)?;
@@ -94,29 +94,29 @@ pub struct SavedJob {
 impl SavedJob {
     fn cancel(&mut self) -> Result<Vec<String>> {
         if !self.active() {
-            return Err(invalid("This run has already finished. Refresh Jobs."));
+            return Err(invalid("本次运行已结束，请刷新任务列表。"));
         }
         self.enabled = false;
         self.next_run = None;
         let run = self
             .last_run
             .as_mut()
-            .ok_or_else(|| invalid("Run not found."))?;
+            .ok_or_else(|| invalid("未找到运行记录。"))?;
         run.cancel_requested = true;
         run.message =
-            "Cancellation requested. Waiting for preparation or active transfers to stop.".into();
+            "已请求取消，正在等待准备过程或进行中的传输停止。".into();
         Ok(run.transfer_ids.clone())
     }
     fn mark_running(&mut self, ids: Vec<String>) -> Result<()> {
         let run = self
             .last_run
             .as_mut()
-            .ok_or_else(|| invalid("Run disappeared."))?;
+            .ok_or_else(|| invalid("运行记录已消失。"))?;
         if run.cancel_requested || run.finished_at.is_some() {
-            return Err(invalid("Run cancelled before uploads were queued."));
+            return Err(invalid("运行已在上传加入队列前取消。"));
         }
         run.message = format!(
-            "{} uploads queued. View or cancel them in Uploads.",
+            "已加入 {} 个上传任务，可在“上传”中查看或取消。",
             ids.len()
         );
         run.transfer_ids = ids;
@@ -139,7 +139,7 @@ impl SavedJob {
     }
     fn reserve(&mut self, time: i64) -> Result<()> {
         if self.active() {
-            return Err(invalid("This job is already running."));
+            return Err(invalid("该任务正在运行。"));
         }
         self.last_run = Some(Run {
             cancel_requested: false,
@@ -147,7 +147,7 @@ impl SavedJob {
             started_at: time,
             finished_at: None,
             status: "Preparing".into(),
-            message: "Scanning and comparing fresh content.".into(),
+            message: "正在扫描并比对最新内容。".into(),
             transfer_ids: vec![],
         });
         self.next_run = None;
@@ -195,7 +195,7 @@ impl JobStore {
     pub fn open(path: PathBuf, time: i64) -> Result<Self> {
         let parent = path
             .parent()
-            .ok_or_else(|| invalid("Missing jobs directory."))?;
+            .ok_or_else(|| invalid("缺少任务目录。"))?;
         std::fs::create_dir_all(parent)?;
         let mut options = std::fs::OpenOptions::new();
         options.create(true).read(true).write(true).truncate(false);
@@ -205,15 +205,15 @@ impl JobStore {
             options.mode(0o600);
         }
         let lock = options.open(path.with_extension("lock"))?;
-        lock.try_lock().map_err(|_| invalid("Saved jobs are already open in another Brows3 instance, or cannot be locked. Close other instances and restart Brows3."))?;
+        lock.try_lock().map_err(|_| invalid("已保存的任务已在另一个 Brows3 实例中打开，或无法加锁。请关闭其他实例并重启 Brows3。"))?;
         let data = match std::fs::read(&path) {
             Ok(bytes) => {
                 if bytes.len() > 16 * 1024 * 1024 {
                     return Err(invalid(
-                        "Saved jobs file is too large. Scheduling is disabled.",
+                        "已保存的任务文件过大，计划任务已停用。",
                     ));
                 }
-                serde_json::from_slice::<Journal>(&bytes).map_err(|_| invalid("Saved jobs could not be read. Scheduling is disabled; the original file was kept."))?
+                serde_json::from_slice::<Journal>(&bytes).map_err(|_| invalid("无法读取已保存的任务，计划任务已停用；原文件已保留。"))?
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Journal {
                 version: 1,
@@ -223,14 +223,14 @@ impl JobStore {
         };
         if data.version != 1 || data.jobs.len() > 50 {
             return Err(invalid(
-                "Unsupported saved jobs file. Scheduling is disabled.",
+                "不支持该已保存的任务文件，计划任务已停用。",
             ));
         }
         let mut ids = std::collections::HashSet::new();
         for job in &data.jobs {
             job.config.validate()?;
             if !ids.insert(&job.id) {
-                return Err(invalid("Duplicate saved job IDs. Scheduling is disabled."));
+                return Err(invalid("存在重复的已保存任务 ID，计划任务已停用。"));
             }
         }
         let mut store = Self {
@@ -242,13 +242,13 @@ impl JobStore {
         store.change(|data| {
             for job in &mut data.jobs {
                 if job.active() {
-                    job.finish(time, "Interrupted", "Brows3 closed during this run. Review Uploads before running again.".into());
+                    job.finish(time, "Interrupted", "此次运行期间 Brows3 已关闭。请先在“上传”中检查，再重新运行。".into());
                 } else if job.enabled && job.next_run.is_some_and(|due| due <= time) {
                     // No surprise catch-up writes when the application is reopened.
                     job.enabled = false;
                     job.next_run = None;
                     job.last_run = Some(Run { cancel_requested: false, id: uuid::Uuid::new_v4().to_string(), started_at: time,
-                        finished_at: Some(time), status: "Missed".into(), message: "A run was missed while Brows3 was closed. Resume the schedule or run now.".into(), transfer_ids: vec![] });
+                        finished_at: Some(time), status: "Missed".into(), message: "Brows3 关闭期间错过了一次运行。请恢复计划或立即运行。".into(), transfer_ids: vec![] });
                 }
             }
             Ok(())
@@ -264,7 +264,7 @@ impl JobStore {
         let result = update(&mut candidate)?;
         let bytes = serde_json::to_vec(&candidate).map_err(|e| invalid(&e.to_string()))?;
         if bytes.len() > 16 * 1024 * 1024 {
-            return Err(invalid("Saved jobs storage reached its 16 MiB limit. Delete unused jobs before trying again."));
+            return Err(invalid("已保存任务占用达到 16 MiB 上限。请删除不再使用的任务后重试。"));
         }
         crate::credentials::write_private_file(&self.path, &bytes)?;
         self.data = candidate;
@@ -275,7 +275,7 @@ fn find<'a>(data: &'a mut Journal, id: &str) -> Result<&'a mut SavedJob> {
     data.jobs
         .iter_mut()
         .find(|j| j.id == id)
-        .ok_or_else(|| invalid("Saved job not found."))
+        .ok_or_else(|| invalid("未找到已保存的任务。"))
 }
 
 #[tauri::command]
@@ -295,18 +295,18 @@ pub async fn save_sync_job(
 ) -> Result<SavedJob> {
     config.validate()?;
     if !approved {
-        return Err(invalid("Approve this saved job before saving."));
+        return Err(invalid("保存前请先确认该任务。"));
     }
     let profile = profiles
         .read()
         .await
         .get_active_profile()
         .await?
-        .ok_or_else(|| invalid("Select a profile."))?;
+        .ok_or_else(|| invalid("请选择配置。"))?;
     super::operations::validate_operation_profile(Some(&config.profile_id), &profile.id)?;
     let metadata = std::fs::symlink_metadata(&config.local_path)?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        return Err(invalid("Choose a real local folder, not a symlink."));
+        return Err(invalid("请选择真实的本地文件夹，不能是符号链接。"));
     }
     let mut job = SavedJob {
         id: uuid::Uuid::new_v4().to_string(),
@@ -319,7 +319,7 @@ pub async fn save_sync_job(
     job.schedule_from(now());
     state.lock().await.change(|data| {
         if data.jobs.len() >= 50 {
-            return Err(invalid("At most 50 saved jobs are supported."));
+            return Err(invalid("最多支持 50 个已保存任务。"));
         }
         data.jobs.push(job.clone());
         Ok(job)
@@ -334,7 +334,7 @@ pub async fn set_saved_job_enabled(
     state.lock().await.change(|data| {
         let job = find(data, &id)?;
         if enabled && job.config.interval_minutes.is_none() {
-            return Err(invalid("This is a manual job."));
+            return Err(invalid("这是手动任务。"));
         }
         job.enabled = enabled;
         if !job.active() {
@@ -346,7 +346,7 @@ pub async fn set_saved_job_enabled(
 #[tauri::command]
 pub async fn delete_saved_job(id: String, state: State<'_, JobState>) -> Result<()> {
     state.lock().await.change(|data| {
-        if find(data, &id)?.active() { return Err(invalid("Wait for this run to finish, or cancel its transfers in Uploads, before deleting the job.")); }
+        if find(data, &id)?.active() { return Err(invalid("请等待本次运行结束，或先在“上传”中取消其传输，再删除该任务。")); }
         data.jobs.retain(|j| j.id != id); Ok(())
     })
 }
@@ -376,7 +376,7 @@ async fn reserve(state: &JobState, id: &str, due: Option<i64>) -> Result<SavedJo
         let job = find(data, id)?;
         if let Some(time) = due {
             if !job.enabled || job.next_run.is_none_or(|n| n > time) {
-                return Err(invalid("Schedule changed."));
+                return Err(invalid("计划已更改。"));
             }
         }
         job.reserve(now())?;
@@ -403,7 +403,7 @@ fn launch(app: AppHandle, state: JobState, job: SavedJob) {
             .and_then(|j| j.last_run.as_ref())
             .is_none_or(|r| r.cancel_requested);
         let result = if cancelled {
-            Err(invalid("Run cancelled before preparation."))
+            Err(invalid("运行在准备前已取消。"))
         } else {
             prepare(&job, &profiles, &s3).await
         };
@@ -450,7 +450,7 @@ fn launch(app: AppHandle, state: JobState, job: SavedJob) {
                 current.finish(
                     now(),
                     "Cancelled",
-                    "Run cancelled. Completed uploads are kept. Schedule paused.".into(),
+                    "运行已取消。已完成的上传会保留，计划已暂停。".into(),
                 );
             } else {
                 current.finish(now(), status, message);
@@ -464,7 +464,7 @@ fn launch(app: AppHandle, state: JobState, job: SavedJob) {
             // Retain the active reservation on storage failure: no subsequent automatic writes.
             Err(error) => {
                 log::error!("Could not save job outcome: {error}");
-                let _ = app.emit("saved-job-storage-error", "Could not save the job result. Scheduling for this job is stopped. Check disk space and restart Brows3.");
+                let _ = app.emit("saved-job-storage-error", "无法保存任务结果，该任务的计划已停止。请检查磁盘空间并重启 Brows3。");
             }
         }
     });
@@ -481,7 +481,7 @@ async fn prepare(
         .get_profile(&job.config.profile_id)
         .await?;
     if profile.cache_identity() != job.profile_identity {
-        return Err(invalid("Profile settings changed. Delete and recreate this job to approve the new destination."));
+        return Err(invalid("配置设置已更改。请删除并重新创建该任务，以确认新的目标。"));
     }
     let config = job.config.clone();
     let local = tokio::task::spawn_blocking(move || {
@@ -516,13 +516,13 @@ async fn prepare(
         != job.profile_identity
     {
         return Err(invalid(
-            "Profile changed while preparing this run. Recreate the saved job.",
+            "准备本次运行期间配置已更改，请重新创建该任务。",
         ));
     }
     let run = job
         .last_run
         .as_ref()
-        .ok_or_else(|| invalid("Missing run reservation."))?;
+        .ok_or_else(|| invalid("缺少运行预留记录。"))?;
     Ok(files
         .into_iter()
         .map(|mut file| {
@@ -536,7 +536,7 @@ async fn prepare(
                 file.source.root.join(&file.source.relative),
                 file.source.size,
             )
-            .with_group(run.id.clone(), format!("Job: {}", job.config.name));
+            .with_group(run.id.clone(), format!("任务：{}", job.config.name));
             transfer.sync_source = Some(file.source);
             transfer.bandwidth_limit = Some(job.config.bandwidth);
             transfer
@@ -573,19 +573,19 @@ async fn monitor(transfers: &TransferState, ids: &[String]) -> (&'static str, St
         }
     }
     if failed > 0 {
-        ("Failed", format!("{failed} failed or unavailable transfers; {cancelled} cancelled. Schedule paused. Review Uploads."))
+        ("Failed", format!("{failed} 个传输失败或不可用；{cancelled} 个已取消。计划已暂停，请检查“上传”。"))
     } else if cancelled > 0 {
         (
             "Cancelled",
-            format!("{cancelled} transfers cancelled. Schedule paused."),
+            format!("{cancelled} 个传输已取消，计划已暂停。"),
         )
     } else {
         (
             "Completed",
             if ids.is_empty() {
-                "No uploads needed. Destination already matches these rules.".into()
+                "无需上传，目标已符合这些规则。".into()
             } else {
-                format!("{} uploads completed.", ids.len())
+                format!("已完成 {} 个上传。", ids.len())
             },
         )
     }
@@ -998,7 +998,7 @@ mod tests {
             .await
             .unwrap_err()
             .to_string()
-            .contains("Profile settings changed"));
+            .contains("配置设置已更改"));
         job.profile_identity = profile.cache_identity();
         job.config.local_path = root.path().join("missing").to_string_lossy().into();
         assert!(prepare(&job, &profiles, &s3).await.is_err());

@@ -32,7 +32,7 @@ pub struct RestoreGuard {
 
 pub async fn versioning(client: &Client, bucket: &str) -> Result<String> {
     let output = client.get_bucket_versioning().bucket(bucket).send().await
-        .map_err(|e| AppError::S3Error(format!("Cannot read bucket versioning. Check GetBucketVersioning permission and provider support: {}", DisplayErrorContext(&e))))?;
+        .map_err(|e| AppError::S3Error(format!("无法读取存储桶版本控制状态。请检查 GetBucketVersioning 权限以及服务商是否支持：{}", DisplayErrorContext(&e))))?;
     Ok(output
         .status()
         .map_or("Disabled", |s| s.as_str())
@@ -41,7 +41,7 @@ pub async fn versioning(client: &Client, bucket: &str) -> Result<String> {
 pub fn validate_key(key: &str) -> Result<()> {
     if key.is_empty() || key.len() > 1024 {
         return Err(AppError::ConfigError(
-            "Enter an exact object key of 1 to 1,024 bytes.".into(),
+            "请输入精确的对象键，长度为 1 到 1,024 字节。".into(),
         ));
     }
     Ok(())
@@ -59,13 +59,13 @@ pub async fn page(
         .is_some_and(|c| c.key_marker != key || c.version_id_marker.is_empty())
     {
         return Err(AppError::ConfigError(
-            "Invalid history cursor. Load the history again.".into(),
+            "历史记录游标无效，请重新加载历史记录。".into(),
         ));
     }
     let output = client.list_object_versions().bucket(bucket).prefix(key).max_keys(limit)
         .set_key_marker(cursor.as_ref().map(|c| c.key_marker.clone()))
         .set_version_id_marker(cursor.as_ref().map(|c| c.version_id_marker.clone())).send().await
-        .map_err(|e| AppError::S3Error(format!("Cannot list versions. Check ListBucketVersions permission and provider support: {}", DisplayErrorContext(&e))))?;
+        .map_err(|e| AppError::S3Error(format!("无法列出版本。请检查 ListBucketVersions 权限以及服务商是否支持：{}", DisplayErrorContext(&e))))?;
     let mut versions = Vec::new();
     for v in output.versions().iter().filter(|v| v.key() == Some(key)) {
         versions.push(Version {
@@ -101,9 +101,9 @@ pub async fn page(
         let marker = output
             .next_key_marker()
             .filter(|m| !m.is_empty())
-            .ok_or_else(|| AppError::S3Error("Incomplete history: missing key marker.".into()))?;
+            .ok_or_else(|| AppError::S3Error("历史记录不完整：缺少 key marker。".into()))?;
         if marker < key {
-            return Err(AppError::S3Error("History cursor moved backwards.".into()));
+            return Err(AppError::S3Error("历史记录游标发生回退。".into()));
         }
         if marker == key {
             let next = Cursor {
@@ -112,7 +112,7 @@ pub async fn page(
             };
             if cursor.as_ref() == Some(&next) {
                 return Err(AppError::S3Error(
-                    "History cursor repeated. Refresh the history.".into(),
+                    "历史记录游标重复，请刷新历史记录。".into(),
                 ));
             }
             Some(next)
@@ -127,19 +127,19 @@ pub async fn page(
 fn required_id(id: Option<&str>) -> Result<String> {
     id.filter(|s| !s.is_empty())
         .map(str::to_owned)
-        .ok_or_else(|| AppError::S3Error("Provider returned a version without an ID.".into()))
+        .ok_or_else(|| AppError::S3Error("服务商返回了没有 ID 的版本。".into()))
 }
 pub async fn current(client: &Client, bucket: &str, key: &str) -> Result<Version> {
     let (versions, _) = page(client, bucket, key, None, 1).await?;
     let mut latest = versions.into_iter().filter(|v| v.is_latest);
     let result = latest.next().ok_or_else(|| {
         AppError::S3Error(
-            "Current version is unavailable. Refresh history before restoring.".into(),
+            "当前版本不可用，请在恢复前刷新历史记录。".into(),
         )
     })?;
     if latest.next().is_some() {
         return Err(AppError::S3Error(
-            "Provider returned multiple current versions.".into(),
+            "服务商返回了多个当前版本。".into(),
         ));
     }
     Ok(result)
@@ -153,7 +153,7 @@ pub async fn validate_restore(
     tokio::time::timeout(Duration::from_secs(60), async {
         if versioning(client, bucket).await? != "Enabled" {
             return Err(AppError::ConfigError(
-                "Restore requires enabled bucket versioning. Nothing was restored.".into(),
+                "恢复操作需要启用存储桶版本控制。未执行任何恢复。".into(),
             ));
         }
         let latest = current(client, bucket, key).await?;
@@ -162,18 +162,18 @@ pub async fn validate_restore(
             || (!guard.deleted && latest.etag != guard.current_etag)
         {
             return Err(AppError::ConfigError(
-                "Current version changed. Refresh history and confirm the restore again.".into(),
+                "当前版本已更改，请刷新历史记录并重新确认恢复。".into(),
             ));
         }
         if !guard.deleted && guard.current_etag.as_ref().is_none_or(|e| e.is_empty()) {
             return Err(AppError::S3Error(
-                "Current object has no ETag; safe restore is unavailable.".into(),
+                "当前对象没有 ETag，无法安全恢复。".into(),
             ));
         }
         Ok(())
     })
     .await
-    .map_err(|_| AppError::S3Error("Checking restore safety timed out.".into()))?
+    .map_err(|_| AppError::S3Error("检查恢复安全性超时。".into()))?
 }
 
 #[cfg(test)]
@@ -247,7 +247,7 @@ mod tests {
             .await
             .unwrap_err()
             .to_string()
-            .contains("changed"));
+            .contains("已更改"));
         assert!(server.await.unwrap().iter().all(|r| r.starts_with("GET ")));
         let (client, server) = scripted_client(vec![response(
             403,

@@ -99,7 +99,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
             {title}
           </Typography>
           <IconButton
-            aria-label="close"
+            aria-label="关闭"
             disabled={closeDisabled}
             onClick={onClose}
             sx={{

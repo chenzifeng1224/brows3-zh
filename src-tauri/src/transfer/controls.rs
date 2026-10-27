@@ -5,7 +5,7 @@ use std::time::Duration;
 pub fn validate_bandwidth(rate: u64) -> Result<()> {
     if rate != 0 && !(64 * 1024..=1024 * 1024 * 1024).contains(&rate) {
         return Err(AppError::ConfigError(
-            "Bandwidth must be unlimited (0), or 64 to 1,048,576 KiB/s per transfer.".into(),
+            "带宽必须为不限速（0），或每个传输 64 到 1,048,576 KiB/s。".into(),
         ));
     }
     Ok(())
@@ -35,15 +35,15 @@ impl Filters {
     pub fn new(options: &SyncOptions) -> Result<Self> {
         if options.include.len() + options.exclude.len() > 100 {
             return Err(AppError::ConfigError(
-                "Use at most 100 filter patterns.".into(),
+                "最多使用 100 个过滤模式。".into(),
             ));
         }
         fn compile(patterns: &[String]) -> Result<Vec<glob::Pattern>> {
             patterns.iter().map(|pattern| {
                 if pattern.is_empty() || pattern.len() > 1024 || pattern.starts_with('/') || pattern.contains('\\') || pattern.chars().any(char::is_control) {
-                    return Err(AppError::ConfigError("Patterns must be relative paths of 1 to 1,024 bytes, using forward slashes.".into()));
+                    return Err(AppError::ConfigError("模式必须为 1 到 1,024 字节的相对路径，并使用正斜杠。".into()));
                 }
-                glob::Pattern::new(pattern).map_err(|e| AppError::ConfigError(format!("Invalid filter {pattern:?}: {e}")))
+                glob::Pattern::new(pattern).map_err(|e| AppError::ConfigError(format!("过滤器 {pattern:?} 无效：{e}")))
             }).collect()
         }
         Ok(Self {

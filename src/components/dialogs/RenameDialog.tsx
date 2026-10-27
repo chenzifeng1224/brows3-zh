@@ -40,7 +40,7 @@ export default function RenameDialog({ open, onClose, onRename, currentName, isF
       await onRename(value);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rename');
+      setError(err instanceof Error ? err.message : '重命名失败');
     } finally {
       setIsSubmitting(false);
     }
@@ -50,7 +50,7 @@ export default function RenameDialog({ open, onClose, onRename, currentName, isF
     <BaseDialog 
       open={open} 
       onClose={onClose} 
-      title="Rename Object"
+      title="重命名对象"
       maxWidth="sm"
       actions={
         <>
@@ -58,27 +58,27 @@ export default function RenameDialog({ open, onClose, onRename, currentName, isF
             onClick={onClose} 
             disabled={isSubmitting}
           >
-            Cancel
+            取消
           </Button>
           <Button 
             onClick={handleSubmit} 
             variant="contained" 
             disabled={!value.trim() || value === currentName || isSubmitting}
           >
-            {isSubmitting ? 'Renaming...' : 'Rename'}
+            {isSubmitting ? '重命名中...' : '重命名'}
           </Button>
         </>
       }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-            Enter a new name for <strong>{currentName}</strong>. 
+            为 <strong>{currentName}</strong> 输入新名称。
             <Box component="span" sx={{ display: 'block', mt: 0.5, fontSize: '0.8rem', opacity: 0.8 }}>
-              Note: This copies the object to a new key and deletes the old one.
+              注意：这会将对象复制到新键并删除旧键。
             </Box>
             {isFolder && (
               <Alert severity="warning" sx={{ mt: 1.5, py: 0, '& .MuiAlert-message': { fontSize: '0.8rem' } }}>
-                Warning: Renaming a folder moves all contained objects. For large folders, this may take a significant amount of time.
+                警告：重命名文件夹会移动其中的所有对象。对于较大的文件夹，这可能需要很长时间。
               </Alert>
             )}
         </Typography>
@@ -86,7 +86,7 @@ export default function RenameDialog({ open, onClose, onRename, currentName, isF
         <TextField
             autoFocus
             fullWidth
-            label="New Name"
+            label="新名称"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
