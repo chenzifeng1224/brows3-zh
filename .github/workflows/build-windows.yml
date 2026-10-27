@@ -1,0 +1,43 @@
+name: build-windows
+
+# 精简版 Windows 专用构建：只出安装包 exe，不需要任何密钥
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v6.0.8
+        with:
+          version: 11.2.2
+
+      - uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建前端
+        run: pnpm build
+
+      - name: 打包 Windows 安装包 (NSIS + MSI)
+        run: pnpm tauri build --bundles nsis,msi
+
+      - name: 上传安装包产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: brows3-windows-installers
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error

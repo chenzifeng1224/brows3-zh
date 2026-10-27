@@ -1,0 +1,85 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Brows3",
+  "version": "0.2.46",
+  "identifier": "com.brows3",
+  "build": {
+    "frontendDist": "../out",
+    "devUrl": "http://localhost:3001",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Brows3 - S3 浏览器",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "devtools": false,
+        "transparent": false,
+        "decorations": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' asset: https: http: data:; connect-src 'self' https: ipc:; frame-src 'self' https: http:; media-src 'self' https: http:; object-src 'self' https: http:; worker-src 'self' blob:;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": false,
+    "targets": [
+      "msi",
+      "nsis",
+      "deb",
+      "appimage",
+      "dmg",
+      "app"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "© 2024 Brows3. All rights reserved.",
+    "publisher": "Brows3 Team",
+    "category": "Utility",
+    "shortDescription": "A lightning-fast S3 browser, S3 explorer, and S3 desktop client.",
+    "longDescription": "Brows3 is a high-performance Amazon S3 browser, S3 explorer, and S3 desktop client for AWS S3 and S3-compatible object storage including MinIO, Cloudflare R2, Wasabi, DigitalOcean Spaces, and custom endpoints. Built with Rust and Tauri, it offers instant prefix navigation, deep recursive search, secure local profile management, and fast bucket browsing for large object stores.",
+    "license": "MIT",
+    "homepage": "https://github.com/rgcsekaraa/brows3",
+    "macOS": {
+      "signingIdentity": "-"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      },
+      "nsis": {
+        "displayLanguageSelector": false,
+        "languages": [
+          "SimpChinese"
+        ]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://raw.githubusercontent.com/rgcsekaraa/brows3/main/update.json"
+      ],
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGOEU2QTBFM0RDNTFCMEIKUldRTEc4VTlEbXFPUDhRdE9DQTZTSDNzWE5Rb0IzUG9UTEdjUlhQTVVrUjFDYU1PTEw0TThBRjQK"
+    }
+  }
+}

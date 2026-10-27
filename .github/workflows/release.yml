@@ -1,0 +1,610 @@
+name: "publish"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/README.md'
+      - 'update.json'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v6.0.8
+        with:
+          version: 11.2.2
+
+      - name: install Rust 1.97.1
+        uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          components: clippy,rustfmt
+
+      - name: install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: validate release scripts
+        run: node --test .github/scripts/*.test.js
+
+      - name: validate frontend
+        run: |
+          pnpm test:frontend
+          pnpm lint --max-warnings 0
+          pnpm typecheck
+          pnpm build
+
+      - name: validate Rust backend
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --all-features --locked
+
+  validate-windows:
+    # VS 2022/MSVC v143 matches Brows3's declared Windows 10 baseline.
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: install Rust 1.97.1
+        uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: validate Windows backend
+        run: |
+          cargo check --manifest-path src-tauri/Cargo.toml --locked
+          cargo test --manifest-path src-tauri/Cargo.toml --locked
+
+  prepare-release:
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip release]')
+    needs:
+      - validate
+      - validate-windows
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.release_meta.outputs.release_version }}
+      tag_name: ${{ steps.release_meta.outputs.tag_name }}
+      release_id: ${{ steps.release_record.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Compute release version
+        id: release_meta
+        shell: bash
+        run: |
+          RELEASE_VERSION=$(node -p 'require("./package.json").version')
+          TAG_NAME="app-v${RELEASE_VERSION}"
+          echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "Using release version $RELEASE_VERSION"
+
+      - name: Create or update GitHub release
+        id: release_record
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release_meta.outputs.release_version }}
+          TAG_NAME: ${{ steps.release_meta.outputs.tag_name }}
+        run: |
+          NOTES_FILE=$(mktemp)
+          node .github/scripts/extract-release-notes.js > "$NOTES_FILE"
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            IS_DRAFT=$(gh release view "$TAG_NAME" --json isDraft --jq '.isDraft')
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "::error::Refusing to overwrite already-published release $TAG_NAME."
+              exit 1
+            fi
+
+            gh release edit "$TAG_NAME" \
+              --target "$GITHUB_SHA" \
+              --title "Brows3 v$RELEASE_VERSION" \
+              --notes-file "$NOTES_FILE"
+          else
+            gh release create "$TAG_NAME" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "Brows3 v$RELEASE_VERSION" \
+              --notes-file "$NOTES_FILE"
+          fi
+
+          RELEASE_ID=$(gh release view "$TAG_NAME" --json databaseId --jq '.databaseId')
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "::error::Could not resolve the release ID for $TAG_NAME."
+            exit 1
+          fi
+
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+  publish-tauri:
+    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip release]')
+    needs: prepare-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest" # for Apple Silicon
+            args: "--target aarch64-apple-darwin --bundles app,dmg"
+          - platform: "macos-latest" # for Intel
+            args: "--target x86_64-apple-darwin --bundles app,dmg"
+          - platform: "ubuntu-22.04" # for Linux
+            args: ""
+          - platform: "ubuntu-22.04-arm" # for Linux ARM64
+            args: ""
+          - platform: "windows-2022" # Windows 10-compatible MSVC v143 baseline
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v6.0.8
+        with:
+          version: 11.2.2
+
+      - name: install Rust 1.97.1
+        uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          # Those targets are only used on macos-latest
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: install dependencies (ubuntu only)
+        if: startsWith(matrix.platform, 'ubuntu-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf xvfb
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+
+      - name: Prepare Linux AppImage GTK plugin
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        run: .github/scripts/prepare-linux-appimage-plugin.sh
+
+      - name: install WiX v4 (windows only)
+        if: startsWith(matrix.platform, 'windows-')
+        run: dotnet tool install --global wix
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compute release version
+        shell: bash
+        run: |
+          RELEASE_VERSION="${{ needs.prepare-release.outputs.release_version }}"
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+          echo "Using release version $RELEASE_VERSION"
+
+      - name: Sync release versions
+        run: node scripts/sync-release-version.js "$RELEASE_VERSION"
+
+      - name: Verify Signing Key
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is required for signed desktop updates."
+            exit 1
+          else
+            echo "✅ TAURI_SIGNING_PRIVATE_KEY is configured"
+          fi
+
+      - name: Prepare optional macOS code signing and notarization
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE_SECRET: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD_SECRET: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY_SECRET: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY_SECRET: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_PRIVATE_KEY_SECRET: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD_SECRET: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          append_env() {
+            local name="$1"
+            local value="$2"
+            local delimiter="BROWS3_${name}_EOF"
+            {
+              echo "${name}<<${delimiter}"
+              printf '%s\n' "$value"
+              echo "$delimiter"
+            } >> "$GITHUB_ENV"
+          }
+
+          if [ -n "$APPLE_CERTIFICATE_SECRET" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD_SECRET" ] && [ -n "$APPLE_SIGNING_IDENTITY_SECRET" ]; then
+            append_env APPLE_CERTIFICATE "$APPLE_CERTIFICATE_SECRET"
+            append_env APPLE_CERTIFICATE_PASSWORD "$APPLE_CERTIFICATE_PASSWORD_SECRET"
+            append_env APPLE_SIGNING_IDENTITY "$APPLE_SIGNING_IDENTITY_SECRET"
+            echo "Apple Developer ID signing is configured."
+          elif [ -n "$APPLE_CERTIFICATE_SECRET$APPLE_CERTIFICATE_PASSWORD_SECRET$APPLE_SIGNING_IDENTITY_SECRET" ]; then
+            echo "::warning::Apple signing secrets are incomplete; using the configured ad-hoc signing fallback."
+          else
+            echo "Apple signing secrets are absent; using the configured ad-hoc signing fallback."
+          fi
+
+          if [ -n "$APPLE_API_KEY_SECRET" ] && [ -n "$APPLE_API_ISSUER_SECRET" ] && [ -n "$APPLE_API_PRIVATE_KEY_SECRET" ]; then
+            API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_SECRET}.p8"
+            printf '%s\n' "$APPLE_API_PRIVATE_KEY_SECRET" > "$API_KEY_PATH"
+            chmod 600 "$API_KEY_PATH"
+            append_env APPLE_API_KEY "$APPLE_API_KEY_SECRET"
+            append_env APPLE_API_ISSUER "$APPLE_API_ISSUER_SECRET"
+            append_env APPLE_API_KEY_PATH "$API_KEY_PATH"
+            echo "App Store Connect API notarization is configured."
+          elif [ -n "$APPLE_API_KEY_SECRET$APPLE_API_ISSUER_SECRET$APPLE_API_PRIVATE_KEY_SECRET" ]; then
+            echo "::warning::App Store Connect API secrets are incomplete; notarization is disabled."
+          elif [ -n "$APPLE_ID_SECRET" ] && [ -n "$APPLE_PASSWORD_SECRET" ] && [ -n "$APPLE_TEAM_ID_SECRET" ]; then
+            append_env APPLE_ID "$APPLE_ID_SECRET"
+            append_env APPLE_PASSWORD "$APPLE_PASSWORD_SECRET"
+            append_env APPLE_TEAM_ID "$APPLE_TEAM_ID_SECRET"
+            echo "Apple ID notarization is configured."
+          elif [ -n "$APPLE_ID_SECRET$APPLE_PASSWORD_SECRET$APPLE_TEAM_ID_SECRET" ]; then
+            echo "::warning::Apple ID notarization secrets are incomplete; notarization is disabled."
+          else
+            echo "::warning::Apple notarization is not configured."
+          fi
+
+      - name: Build desktop bundles
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          pnpm tauri build ${{ matrix.args }}
+
+      - name: Name macOS updater archives
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          ARCH=""
+          if [[ "${{ matrix.args }}" == *"aarch64-apple-darwin"* ]]; then
+            ARCH="aarch64"
+          elif [[ "${{ matrix.args }}" == *"x86_64-apple-darwin"* ]]; then
+            ARCH="x64"
+          else
+            echo "::error::Unknown macOS target in matrix args: ${{ matrix.args }}"
+            exit 1
+          fi
+
+          found=0
+          while IFS= read -r -d '' archive; do
+            found=1
+            dir="$(dirname "$archive")"
+            renamed="$dir/Brows3_${RELEASE_VERSION}_${ARCH}.app.tar.gz"
+            mv "$archive" "$renamed"
+            if [ -f "$archive.sig" ]; then
+              mv "$archive.sig" "$renamed.sig"
+            else
+              echo "::error::Missing signature for $archive"
+              exit 1
+            fi
+          done < <(find src-tauri/target -type f -path '*/bundle/macos/*.app.tar.gz' -print0)
+
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No macOS updater archive was generated."
+            exit 1
+          fi
+
+      - name: Create Windows portable zip
+        if: startsWith(matrix.platform, 'windows-')
+        shell: bash
+        run: |
+          PORTABLE_DIR="src-tauri/target/release/bundle/portable/Brows3_${RELEASE_VERSION}_x64-portable"
+          mkdir -p "$PORTABLE_DIR"
+          cp src-tauri/target/release/brows3.exe "$PORTABLE_DIR/Brows3.exe"
+          touch "$PORTABLE_DIR/brows3.portable"
+          7z a "src-tauri/target/release/bundle/portable/Brows3_${RELEASE_VERSION}_x64-portable.zip" "$PORTABLE_DIR"/*
+
+      - name: Check macOS and Linux packages
+        if: runner.os != 'Windows'
+        shell: bash
+        run: bash .github/scripts/smoke-packages.sh
+
+      - name: Check Windows installers and portable startup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .github/scripts/smoke-windows-packages.ps1
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.prepare-release.outputs.tag_name }}
+        run: |
+          FILES=()
+          while IFS= read -r -d '' file; do
+            FILES+=("$file")
+          done < <(find src-tauri/target -type f \
+            \( \
+              -path '*/bundle/msi/*' -o \
+              -path '*/bundle/nsis/*' -o \
+              -path '*/bundle/portable/*' -o \
+              -path '*/bundle/appimage/*' -o \
+              -path '*/bundle/deb/*' -o \
+              -path '*/bundle/dmg/*' -o \
+              -path '*/bundle/macos/*' \
+            \) \
+            \( \
+              -name '*.msi' -o -name '*.msi.sig' -o -name '*.msi.zip' -o -name '*.msi.zip.sig' -o \
+              -name '*-setup.exe' -o -name '*-setup.exe.sig' -o -name '*.nsis.zip' -o -name '*.nsis.zip.sig' -o \
+              -name '*-portable.zip' -o \
+              -name '*.AppImage' -o -name '*.AppImage.sig' -o \
+              -name '*.deb' -o -name '*.deb.sig' -o \
+              -name '*.dmg' -o -name '*.dmg.sig' -o \
+              -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' \
+            \) -print0)
+
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "::error::No release artifacts were generated."
+            exit 1
+          fi
+
+          printf 'Uploading %s\n' "${FILES[@]}"
+          gh release upload "$TAG_NAME" "${FILES[@]}" --clobber
+
+  update-manifest:
+    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip release]')
+    needs:
+      - prepare-release
+      - publish-tauri
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Compute release version
+        shell: bash
+        run: |
+          RELEASE_VERSION="${{ needs.prepare-release.outputs.release_version }}"
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+          echo "Using release version $RELEASE_VERSION"
+
+      - name: Update manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
+        run: |
+          VERSION="$RELEASE_VERSION"
+          TAG="app-v$VERSION"
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::The draft release ID was not provided by prepare-release."
+            exit 1
+          fi
+          
+          echo "Updating manifest for version $VERSION ($TAG)"
+          
+          # Wait for GitHub to process the assets and release metadata
+          RELEASE_INFO=""
+          for attempt in 1 2 3 4 5 6 7 8; do
+            # Draft releases are deliberately absent from the public tag lookup
+            # endpoint. Address this exact release by the immutable ID emitted by
+            # prepare-release so the completeness gate can inspect it pre-publish.
+            if RELEASE_INFO=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" 2>/dev/null); then
+              ASSET_COUNT=$(echo "$RELEASE_INFO" | jq '.assets | length')
+              if [ "$ASSET_COUNT" -gt 0 ]; then
+                echo "Release metadata ready on attempt $attempt with $ASSET_COUNT asset(s)"
+                break
+              fi
+            fi
+
+            if [ "$attempt" -eq 8 ]; then
+              echo "::error::Release assets were not ready in time for $TAG"
+              exit 1
+            fi
+
+            echo "Release assets not ready yet for $TAG, retrying in 15 seconds (attempt $attempt/8)"
+            sleep 15
+          done
+          
+          # Debug: List all assets found
+          echo "=== Found Release Assets ==="
+          echo "$RELEASE_INFO" | jq -r '.assets[] | .name' | sort
+          echo "==========================="
+          
+          # Check if we have signature files
+          SIG_COUNT=$(echo "$RELEASE_INFO" | jq '[.assets[] | select(.name | endswith(".sig"))] | length')
+          echo "Found $SIG_COUNT signature files"
+          
+          if [ "$SIG_COUNT" -eq "0" ]; then
+            echo "::warning::No signature files found! The TAURI_SIGNING_PRIVATE_KEY may not be configured correctly."
+            echo "Auto-updates will NOT work without signed builds."
+            echo "Please add TAURI_SIGNING_PRIVATE_KEY to your GitHub repository secrets."
+            echo ""
+            echo "To generate a signing key, run:"
+            echo "  npx @tauri-apps/cli signer generate -w ~/.tauri/brows3.key"
+            echo ""
+            echo "Then add the private key contents to TAURI_SIGNING_PRIVATE_KEY secret,"
+            echo "and update the pubkey in tauri.conf.json plugins.updater.pubkey"
+          fi
+          
+          # Start building the platforms object
+          PLATFORMS="{}"
+          RELEASE_DOWNLOAD_BASE="https://github.com/${{ github.repository }}/releases/download/$TAG"
+          SIGNATURE_DIR="$RUNNER_TEMP/brows3-release-signatures"
+          mkdir -p "$SIGNATURE_DIR"
+          
+          # Function to add platform
+          add_platform() {
+            local PLATFORM=$1
+            local PATTERN=$2
+            local SIG_PATTERN=$3
+            
+            # Draft metadata exposes temporary `untagged-*` download URLs. Use
+            # the asset name to construct the stable URL that will exist after
+            # this exact draft is published.
+            ASSET_NAME=$(echo "$RELEASE_INFO" | jq -r --arg pattern "$PATTERN" '.assets[] | select(.name | test($pattern; "i")) | .name' | head -1)
+            
+            if [ -n "$ASSET_NAME" ] && [ "$ASSET_NAME" != "null" ]; then
+              ASSET_URL="$RELEASE_DOWNLOAD_BASE/$ASSET_NAME"
+              echo "Found $PLATFORM asset: $ASSET_NAME"
+              
+              # Draft browser_download_url values are not publicly readable.
+              # Download the signature through the authenticated release-asset
+              # API, and retain it for the pre-publication metadata audit.
+              SIG_ASSET_ID=$(echo "$RELEASE_INFO" | jq -r --arg pattern "$SIG_PATTERN" '.assets[] | select(.name | test($pattern; "i")) | .id' | head -1)
+              SIG_ASSET_NAME=$(echo "$RELEASE_INFO" | jq -r --arg pattern "$SIG_PATTERN" '.assets[] | select(.name | test($pattern; "i")) | .name' | head -1)
+              
+              if [ -n "$SIG_ASSET_ID" ] && [ "$SIG_ASSET_ID" != "null" ] && [ -n "$SIG_ASSET_NAME" ]; then
+                SIG_PATH="$SIGNATURE_DIR/$SIG_ASSET_NAME"
+                gh api \
+                  -H "Accept: application/octet-stream" \
+                  "repos/${{ github.repository }}/releases/assets/$SIG_ASSET_ID" \
+                  > "$SIG_PATH"
+                SIG=$(tr -d '\r\n' < "$SIG_PATH")
+
+                if [ "${#SIG}" -lt 300 ]; then
+                  echo "::error::Downloaded signature $SIG_ASSET_NAME is unexpectedly short."
+                  exit 1
+                fi
+                
+                PLATFORMS=$(echo "$PLATFORMS" | jq --arg p "$PLATFORM" --arg u "$ASSET_URL" --arg s "$SIG" '.[$p] = {"url": $u, "signature": $s}')
+                echo "✅ Added $PLATFORM with signature"
+              else
+                 echo "⚠️ Found asset for $PLATFORM but missing signature file"
+              fi
+            else
+               echo "❌ Could not find asset for $PLATFORM (pattern: $PATTERN)"
+            fi
+          }
+          
+          # Add each platform - Updated patterns to match Tauri v2 naming
+          # macOS Apple Silicon (aarch64) - matches Brows3_aarch64.app.tar.gz
+          add_platform "darwin-aarch64" "_aarch64\\.app\\.tar\\.gz$" "_aarch64\\.app\\.tar\\.gz\\.sig$"
+          
+          # macOS Intel (x64) - matches Brows3_x64.app.tar.gz  
+          add_platform "darwin-x86_64" "_x64\\.app\\.tar\\.gz$" "_x64\\.app\\.tar\\.gz\\.sig$"
+          
+          # Linux (AppImage) - matches Brows3_<version>_amd64.AppImage
+          add_platform "linux-x86_64" "_amd64\\.AppImage$" "_amd64\\.AppImage\\.sig$"
+
+          # Linux ARM64 (AppImage) - matches Brows3_<version>_arm64.AppImage or _aarch64.AppImage
+          add_platform "linux-aarch64" "_(arm64|aarch64)\\.AppImage$" "_(arm64|aarch64)\\.AppImage\\.sig$"
+          
+          # Windows (NSIS) - matches Brows3_<version>_x64-setup.exe
+          add_platform "windows-x86_64" "_x64-setup\\.exe$" "_x64-setup\\.exe\\.sig$"
+          
+          # Check if we have any platforms
+          PLATFORM_COUNT=$(echo "$PLATFORMS" | jq 'keys | length')
+          
+          if [ "$PLATFORM_COUNT" -ne "5" ]; then
+            echo "::error::Expected 5 signed updater platforms, but generated $PLATFORM_COUNT."
+            exit 1
+          else
+            echo "Successfully added all $PLATFORM_COUNT platforms to update manifest"
+          fi
+          
+          # Build final update.json
+          PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          cat > update.json << EOF
+          {
+            "version": "$VERSION",
+            "notes": "See https://github.com/${{ github.repository }}/releases/tag/$TAG for release notes.",
+            "pub_date": "$PUB_DATE",
+            "platforms": $PLATFORMS
+          }
+          EOF
+          
+          # Pretty print
+          cat update.json | jq . > update.json.tmp && mv update.json.tmp update.json
+          
+          echo ""
+          echo "=== Final update.json ==="
+          cat update.json
+          echo "========================="
+
+          # Generate winget manifests from the actual release installer URL and SHA256.
+          printf '%s' "$RELEASE_INFO" > release-info.json
+          node .github/scripts/write-winget-manifests.js release-info.json dist/winget
+
+          node .github/scripts/validate-generated-release-metadata.js \
+            release-info.json \
+            update.json \
+            dist/winget/Brows3Team.Brows3.installer.yaml \
+            "$SIGNATURE_DIR" \
+            "$VERSION"
+
+          echo ""
+          echo "=== Generated winget manifests ==="
+          ls -la dist/winget
+          echo "=================================="
+
+          gh release upload "$TAG" dist/winget/*.yaml --clobber
+
+          # Re-fetch and validate the complete draft after the final assets have
+          # been uploaded. A failed check leaves the release unpublished.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" > final-release-info.json
+            if node .github/scripts/validate-release-assets.js final-release-info.json "$VERSION"; then
+              break
+            fi
+
+            if [ "$attempt" -eq 8 ]; then
+              echo "::error::The draft release did not become complete and verifiable in time."
+              exit 1
+            fi
+
+            echo "Release asset metadata is still settling; retrying in 5 seconds (attempt $attempt/8)"
+            sleep 5
+          done
+
+          gh release edit "$TAG" --draft=false --latest
+          echo "Published fully validated release $TAG"
+          
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add update.json
+          git diff --cached --quiet || (git commit -m "chore: update auto-update manifest to v$VERSION" && git push origin main)

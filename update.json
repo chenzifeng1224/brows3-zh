@@ -1,0 +1,27 @@
+{
+  "version": "0.2.46",
+  "notes": "See https://github.com/rgcsekaraa/brows3/releases/tag/app-v0.2.46 for release notes.",
+  "pub_date": "2026-09-21T06:59:58Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "url": "https://github.com/rgcsekaraa/brows3/releases/download/app-v0.2.46/Brows3_0.2.46_aarch64.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRTEc4VTlEbXFPUC9obEdLaFBIZzIwUlN6R0dBYzRhSFpCZkl4NnJNMWVITFdMM2ZEMjlXWEd6dk5vNlRkK0V2UVhsS2dxRnN2WEZBRlhXTktOTXhyVlRzUkhFU0p3cHdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5OTczNjA4CWZpbGU6QnJvd3MzLmFwcC50YXIuZ3oKQXczbnp3L20wS05vSE1oS1VPU3NnR2JSc2I0R2dtcnR0QS8yZFJsTUJkajkwV2h5SHF4eDBxZXVhay9ReWdpZm9CQlhCcmh2OXlCc3BVTEZiL0grQXc9PQo="
+    },
+    "darwin-x86_64": {
+      "url": "https://github.com/rgcsekaraa/brows3/releases/download/app-v0.2.46/Brows3_0.2.46_x64.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRTEc4VTlEbXFPUDVHOGk2cVlsR0lRdHFuak1tQmJ5Z2NnQmtweW9SVEsrWmFudFhlaHlRcmxYRzFHYUllVkozODRrNEpRUEZldmVadVNqVTdaUmd6QkhCSjVrUTBOV1FvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5OTczNTY0CWZpbGU6QnJvd3MzLmFwcC50YXIuZ3oKOWJEaFJ2NU14VjE4NUNpM1NibkhPV3haTU0rdnhpYXI4Ukc3ak5vWVgzY24rb2poN0hhZm1jQ3k2eFE4SUF4MDVUT3ZMaWNxRFk4Z3lKUllBRFVBQkE9PQo="
+    },
+    "linux-x86_64": {
+      "url": "https://github.com/rgcsekaraa/brows3/releases/download/app-v0.2.46/Brows3_0.2.46_amd64.AppImage",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRTEc4VTlEbXFPUDJvZWxXQXc2alNzQlJqWDQ4eHhlNG1GWTE3VVdHV3RqdFl3VXJnOFZjc01oNWs1MjNJR1ozSjI1NnZSMU5YUWlGNks4OENtM1F4ejRTL0xlTmNoK3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5OTczNTYwCWZpbGU6QnJvd3MzXzAuMi40Nl9hbWQ2NC5BcHBJbWFnZQplUTlMSGJhNnVsbkJMR3NwdDB1czRBQnpONjhXeTZFTUhyS1FjUitSZExtQ0ppRVFldVgvYW5VRGRNd1pJL2F0enoweHU1WjdKQ2pNZUk4UnNZS2RBUT09Cg=="
+    },
+    "linux-aarch64": {
+      "url": "https://github.com/rgcsekaraa/brows3/releases/download/app-v0.2.46/Brows3_0.2.46_aarch64.AppImage",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRTEc4VTlEbXFPUDN0OXJBUEhsdTdwVUhmRTBDYnpHWFBnSEhua25hZlZIM2thbElQNWt6dlBGZU5HaUp3cVk3dHYxSkJaT2dzU3JCNHQ0cjRDZVRpOVRpeHc5bGN1V3dZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5OTczNTE2CWZpbGU6QnJvd3MzXzAuMi40Nl9hYXJjaDY0LkFwcEltYWdlCmFxODFBU3BRWVN4VFUyTkQyNWNIQ3A4U1ZMVVA2SkcxYW1VMEpWSHBNamhYVkJ5QlVPd1RSQWhVWFJPMkgvSEdqaGFqSVBjb2NmZzkza1RKRnhIL0J3PT0K"
+    },
+    "windows-x86_64": {
+      "url": "https://github.com/rgcsekaraa/brows3/releases/download/app-v0.2.46/Brows3_0.2.46_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRTEc4VTlEbXFPUC9UYmRORjdYZVBUdFUySit3cXZYOUVEUjl6amJhRFJQUzlKZkVaeVMzMzVpaURnTHNHOUZBbzM4VncrbDBzTUVyU2VhdEZBREZXbUpTdmMzcy9IYlFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5OTczOTM2CWZpbGU6QnJvd3MzXzAuMi40Nl94NjQtc2V0dXAuZXhlClp0MzBrdHJoK2VaRnhiOXR4QUU1Y0I1QWQ2NVlpR1p0ZUErcG1EMXRNYXhxWVlYTkUreEl0UjNHK2orOGlQb3g1RmJSOHB3dTJKMEErL0RlSmowaENRPT0K"
+    }
+  }
+}
