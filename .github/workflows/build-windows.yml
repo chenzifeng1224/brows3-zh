@@ -15,25 +15,27 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: 'npm'
+          package-manager-cache: false
 
-      # 重点：npm全局安装指定版本pnpm，直接进node的PATH，Windows不会找不到
-      - name: Install pnpm via npm
-        run: npm install -g pnpm@11.2.2
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6.0.8
+        with:
+          version: 11.2.2
 
-      - name: Setup Rust
+      - name: Install Rust 1.97.1
         uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Install dependencies (pnpm workspace)
-        run: pnpm install
+      - name: Install WiX v4
+        run: dotnet tool install --global wix
 
-      - name: Frontend build (next build)
-        run: pnpm build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Tauri build, output nsis + msi
-        run: pnpm tauri build -- --bundles nsis,msi
+      # tauri build 会通过 beforeBuildCommand 自动执行 pnpm build
+      - name: Build Tauri bundles (nsis + msi)
+        run: pnpm tauri build --bundles nsis,msi
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
