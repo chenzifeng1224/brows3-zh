@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, Suspense, useDeferredValue } from 'react';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useProfileStore } from '@/store/profileStore';
 import { useBuckets } from '@/hooks/useBuckets';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useHistoryStore } from '@/store/historyStore';
 import { useAppStore } from '@/store/appStore';
 import { toast } from '@/store/toastStore';
@@ -52,7 +53,7 @@ function HomeContent() {
   const { buckets, isLoading, error, refresh } = useBuckets({ enabled: showBuckets });
   
   const [searchQuery, setSearchQuery] = useState('');
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [debouncedSearchQuery, flushSearchQuery] = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const [s3UriInput, setS3UriInput] = useState('');
   
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
@@ -69,13 +70,13 @@ function HomeContent() {
   
 
   const filteredBuckets = useMemo(() => {
-    if (!deferredSearchQuery.trim()) return buckets;
-    const query = deferredSearchQuery.toLowerCase();
+    if (!debouncedSearchQuery.trim()) return buckets;
+    const query = debouncedSearchQuery.toLowerCase();
     return buckets.filter(bucket => 
       bucket.name.toLowerCase().includes(query) || 
       bucket.region.toLowerCase().includes(query)
     );
-  }, [buckets, deferredSearchQuery]);
+  }, [buckets, debouncedSearchQuery]);
 
   const recentPaths = useMemo(
     () => recentPathEntries
@@ -452,6 +453,11 @@ function HomeContent() {
                 size="small"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  e.preventDefault();
+                  flushSearchQuery();
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">

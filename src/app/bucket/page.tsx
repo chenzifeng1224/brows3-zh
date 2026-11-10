@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from 'react';
+import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Box,
@@ -52,6 +52,7 @@ import {
   History as HistoryIcon,
 } from '@mui/icons-material';
 import { useObjects } from '@/hooks/useObjects';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { operationsApi, transferApi, objectApi, S3Object, copyToClipboard } from '@/lib/tauri';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { useTransferStore } from '@/store/transferStore';
@@ -104,7 +105,7 @@ function BucketContent() {
 
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [debouncedSearchQuery, flushSearchQuery] = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const [isDeepSearch, setIsDeepSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<{ viewKey: string; objects: S3Object[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -250,7 +251,7 @@ function BucketContent() {
 
   // derived data for display (sorting handled by VirtualizedObjectTable)
   const displayData = useMemo(() => {
-     const normalizedQuery = deferredSearchQuery.trim().toLowerCase();
+     const normalizedQuery = debouncedSearchQuery.trim().toLowerCase();
 
      // 1. Deep Search Results (Server-side)
      if (isDeepSearch && searchResults?.viewKey === viewKey) {
@@ -274,7 +275,7 @@ function BucketContent() {
 
      // 3. Default View
      return data;
-  }, [data, searchResults, deferredSearchQuery, prefix, isDeepSearch, viewKey]);
+  }, [data, searchResults, debouncedSearchQuery, prefix, isDeepSearch, viewKey]);
 
   const currentObjectSizeMap = useMemo(
     () => new Map([...(data?.objects || []), ...(displayData?.objects || [])].map((obj) => [obj.key, obj.size])),
@@ -323,9 +324,9 @@ function BucketContent() {
 
   const previewNavigation = usePreviewNavigation({
     objects: displayData?.objects || [], field: sortField, direction: sortDirection,
-    context: JSON.stringify([viewKey, sortField, sortDirection, deferredSearchQuery, isDeepSearch]),
+    context: JSON.stringify([viewKey, sortField, sortDirection, debouncedSearchQuery, isDeepSearch]),
     objectKey: previewKey, open: previewOpen && previewScope === viewKey,
-    hasMore: !isDeepSearch && hasMore, query: isDeepSearch ? '' : deferredSearchQuery.trim(), loadMore,
+    hasMore: !isDeepSearch && hasMore, query: isDeepSearch ? '' : debouncedSearchQuery.trim(), loadMore,
     onNavigate: object => { setPreviewKey(object.key); setPreviewSize(object.size); setStartInEditMode(false); },
   });
 
@@ -1145,7 +1146,12 @@ function BucketContent() {
              size="small"
              value={searchQuery}
              onChange={(e) => setSearchQuery(e.target.value)}
-             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+             onKeyDown={(e) => {
+               if (e.key !== 'Enter') return;
+               e.preventDefault();
+               flushSearchQuery();
+               handleSearch();
+             }}
              InputProps={{
                startAdornment: (
                  <InputAdornment position="start">
@@ -1158,6 +1164,7 @@ function BucketContent() {
                          <IconButton size="small" onClick={() => {
                            searchSequenceRef.current += 1;
                            setSearchQuery('');
+                           flushSearchQuery('');
                            setIsDeepSearch(false);
                            setSearchResults(null);
                            setIsSearching(false);
