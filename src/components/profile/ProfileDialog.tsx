@@ -49,6 +49,8 @@ import { invalidateBucketCache } from '@/hooks/useBuckets';
 
 const AWS_REGIONS = [
   'auto',
+  // 中国区置顶：国内用户的存储桶几乎都在这里，按代码排序会埋在一长串海外区域中间。
+  'cn-north-1', 'cn-northwest-1',
   'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
   'af-south-1',
   'ap-east-1', 'ap-east-2',
@@ -66,6 +68,11 @@ const AWS_REGIONS = [
   'sa-east-1',
   'us-gov-east-1', 'us-gov-west-1',
 ];
+
+const REGION_LABELS: Record<string, string> = {
+  'cn-north-1': '中国（北京）',
+  'cn-northwest-1': '中国（宁夏）',
+};
 
 type CredentialTypeKey = 'Environment' | 'SharedConfig' | 'Manual' | 'CustomEndpoint';
 
@@ -766,14 +773,34 @@ export default function ProfileDialog({ open, onClose, editProfile }: ProfileDia
           value={formData.region}
           onChange={(_, value) => updateField('region', value || '')}
           onInputChange={(_, value) => updateField('region', value)}
+          filterOptions={(options, { inputValue }) => {
+            const query = inputValue.trim();
+            if (!query) return options;
+            const lower = query.toLowerCase();
+            return options.filter(option => option.toLowerCase().includes(lower) || (REGION_LABELS[option] || '').includes(query));
+          }}
           PaperComponent={(props) => (
             <Paper {...props} sx={{ maxHeight: 300, borderRadius: 2, border: '1px solid', borderColor: 'divider' }} />
           )}
+          renderOption={(props, option) => {
+            const { key, ...otherProps } = props;
+            return (
+              <Box component="li" key={key} {...otherProps} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                <span>{option}</span>
+                {REGION_LABELS[option] && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{REGION_LABELS[option]}</Typography>
+                )}
+              </Box>
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
               label="默认区域"
               fullWidth
+              helperText={formData.region.startsWith('cn-')
+                ? '中国区（北京/宁夏）是独立分区，必须使用中国区账号的访问密钥，全球区密钥在此无效。'
+                : undefined}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, fontWeight: 600 } }}
             />
           )}
